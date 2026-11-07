@@ -28,19 +28,24 @@ class User(AbstractUser):
         ('master', 'Master'),
         ('owner', 'Owner'),
         ('admin', 'Admin'),
-
     ]
 
+    username = None
     phone = models.CharField(max_length=13, validators=[
         RegexValidator(regex=r"^\+998\d{9}$", message="Telefon raqam +998901234567 formatida bo'lishi kerak.")],
                              unique=True)
     first_name = models.CharField(max_length=20)
-    last_name = models.CharField(max_length=20)
+    last_name = models.CharField(max_length=20, blank=True)
     role = models.CharField(max_length=10, choices=CHOICE_ROLE, default='client')
     is_phone_verified = models.BooleanField(default=False)
     telegram_id = models.BigIntegerField(null=True, blank=True, unique=True)
     no_show_count = models.PositiveIntegerField(default=0)
     blocked_until = models.DateTimeField(null=True, blank=True)
+
+    USERNAME_FIELD = "phone"
+    REQUIRED_FIELDS = []
+
+    objects = UserManager()
 
     def __str__(self):
         return self.phone
