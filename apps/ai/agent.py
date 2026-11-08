@@ -1,13 +1,30 @@
-"""Claude bilan muloqot sikli (tool use)."""
+"""LLM bilan muloqot sikli (tool calling).
+
+OpenAI-mos API ishlatiladi, shuning uchun bitta kod bilan bepul provayderlar
+(Groq, Google Gemini, OpenRouter) va lokal Ollama ishlaydi.
+"""
 import json
 from datetime import date
 
-import anthropic
-from django.conf import settings
-
+from .llm import conf, get_client
 from .tools import TOOLS, run_tool
 
 MAX_STEPS = 6  # cheksiz tsiklning oldini olish
+
+
+def _openai_tools() -> list[dict]:
+    """tools.py dagi sxemalarni OpenAI formatiga o'giramiz."""
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": t["name"],
+                "description": t["description"],
+                "parameters": t["input_schema"],
+            },
+        }
+        for t in TOOLS
+    ]
 
 
 def _system_prompt() -> str:
@@ -15,45 +32,70 @@ def _system_prompt() -> str:
         "Sen sartaroshxonalar uchun bron qilish yordamchisisan. "
         "Foydalanuvchi bilan o'zbek tilida (u rus tilida yozsa, rus tilida) muloqot qil. "
         f"Bugungi sana: {date.today().isoformat()} ({date.today().strftime('%A')}). "
-        "'Ertaga', 'dushanba kuni' kabi so'zlarni aniq sanaga aylantir. "
-        "Qoidalar: ID larni o'zing o'ylab topma, faqat tool natijalaridan ol. "
-        "Bo'sh vaqtlarni faqat get_available_slots orqali tekshir. "
-        "create_booking ni chaqirishdan oldin usta, xizmat, sana va vaqtni mijozdan aniq tasdiqlat. "
+        "'Ertaga', 'dushanba kuni' kabi so'zlarni aniq sanaga aylantir.\n"
+        "Qoidalar:\n"
+        "1. ID larni o'zing o'ylab topma, faqat tool natijalaridan ol.\n"
+        "2. Narx va davomiylik uchun list_services, ustalar uchun list_masters ni ishlat.\n"
+        "3. Qoidalar (bekor qilish, kechikish, to'lov), qulayliklar, usta haqida ma'lumot va "
+        "mijoz sharhlari haqidagi savollarga FAQAT search_shop_info natijasiga tayanib javob ber. "
+        "Natijada javob bo'lmasa, 'bu haqda ma'lumotim yo'q' de, taxmin qilma.\n"
+        "4. Bo'sh vaqtlarni faqat get_available_slots orqali tekshir.\n"
+        "5. create_booking ni chaqirishdan oldin usta, xizmat, sana va vaqtni mijozdan aniq tasdiqlat.\n"
         "Javoblar qisqa va xushmuomala bo'lsin."
     )
 
 
 def run_agent(user, message: str, history: list[dict] | None = None) -> str:
-    client = anthropic.Anthropic()  # ANTHROPIC_API_KEY muhit o'zgaruvchisidan
-    model = getattr(settings, "ANTHROPIC_MODEL", "claude-sonnet-5-5")
+    client = get_client()
+    model = conf("LLM_MODEL", "llama-3.3-70b-versatile")
+    tools = _openai_tools()
 
-    messages = list(history or [])
+    messages = [{"role": "system", "content": _system_prompt()}]
+    messages += list(history or [])
     messages.append({"role": "user", "content": message})
 
     for _ in range(MAX_STEPS):
-        resp = client.messages.create(
+        resp = client.chat.completions.create(
             model=model,
-            max_tokens=1000,
-            system=_system_prompt(),
-            tools=TOOLS,
             messages=messages,
+            tools=tools,
+            max_tokens=1000,
+        )
+        msg = resp.choices[0].message
+
+        if not msg.tool_calls:
+            return msg.content or ""
+
+        messages.append(
+            {
+                "role": "assistant",
+                "content": msg.content,
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                    for tc in msg.tool_calls
+                ],
+            }
         )
 
-        if resp.stop_reason != "tool_use":
-            return "".join(b.text for b in resp.content if b.type == "text")
-
-        messages.append({"role": "assistant", "content": resp.content})
-        results = []
-        for block in resp.content:
-            if block.type == "tool_use":
-                output = run_tool(block.name, user, block.input)
-                results.append(
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": json.dumps(output, ensure_ascii=False),
-                    }
-                )
-        messages.append({"role": "user", "content": results})
+        for tc in msg.tool_calls:
+            try:
+                args = json.loads(tc.function.arguments or "{}")
+            except json.JSONDecodeError:
+                args = {}
+            output = run_tool(tc.function.name, user, args)
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": json.dumps(output, ensure_ascii=False),
+                }
+            )
 
     return "Kechirasiz, so'rovni bajara olmadim. Iltimos, qayta urinib ko'ring."

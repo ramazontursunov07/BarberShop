@@ -1,11 +1,15 @@
-import anthropic
+import logging
+
+from openai import OpenAIError
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from .agent import run_agent
+from .llm import conf
+
+logger = logging.getLogger(__name__)
 
 
 class AiChatThrottle(UserRateThrottle):
@@ -28,6 +32,17 @@ def _clean_history(raw) -> list[dict]:
     return cleaned
 
 
+def _get_runner():
+    """AI_ENGINE=graph (LangGraph, standart) yoki AI_ENGINE=simple (qo'lda yozilgan sikl)."""
+    if conf("AI_ENGINE", "graph") == "simple":
+        from .agent import run_agent
+
+        return run_agent
+    from .graph import run_graph
+
+    return run_graph
+
+
 class ChatView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [AiChatThrottle]
@@ -42,11 +57,17 @@ class ChatView(APIView):
         history = _clean_history(request.data.get("history"))
 
         try:
-            reply = run_agent(request.user, message, history)
-        except anthropic.APIError:
+            reply = _get_runner()(request.user, message, history)
+        except OpenAIError:
+            logger.exception("LLM provayderi xatosi")
             return Response(
                 {"detail": "AI xizmati vaqtincha ishlamayapti"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
+        except Exception:
+            logger.exception("AI agentida kutilmagan xato")
+            return Response(
+                {"detail": "AI yordamchida ichki xato yuz berdi"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
         return Response({"reply": reply})
-    
