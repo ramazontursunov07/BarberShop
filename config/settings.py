@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "apps.services",
     "apps.bookings",
     "apps.reviews",
+    "apps.ai",
 ]
 
 AUTH_USER_MODEL = "users.User"
@@ -136,6 +137,7 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    "DEFAULT_THROTTLE_RATES": {"ai_chat": "20/min"},
 }
 
 CORS_ALLOWED_ORIGINS = [
