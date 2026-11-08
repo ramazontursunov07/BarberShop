@@ -47,6 +47,35 @@ def make_tools(user):
         )
 
     @tool
+    def find_best_slots(service_id: int, date: str, master_id: int = 0,
+                        part_of_day: str = "", preferred_time: str = "") -> str:
+        """Mijozning xohishiga eng mos bo'sh vaqtlarni qidiradi (usta aytilmasa hamma ustalar bo'yicha,
+        bir necha kun oldinga). 'Ertaga kechqurun', 'ertalab', 'soat 15 atrofida' kabi noaniq so'rovlar
+        uchun ishlat. date: boshlanish sanasi YYYY-MM-DD. part_of_day: morning (ertalab),
+        afternoon (kunduzi), evening (kechqurun) yoki bo'sh. preferred_time: HH:MM yoki bo'sh.
+        Natijadagi sana so'ralgandan farq qilishi mumkin."""
+        args = {"service_id": service_id, "date": date}
+        if master_id:
+            args["master_id"] = master_id
+        if part_of_day:
+            args["part_of_day"] = part_of_day
+        if preferred_time:
+            args["preferred_time"] = preferred_time
+        return _dump(run_tool("find_best_slots", user, args))
+
+    @tool
+    def my_bookings(upcoming_only: bool = True) -> str:
+        """Mijozning o'z bronlari (id, usta, xizmat, sana, vaqt, holat). upcoming_only=True: faqat kelgusi faol bronlar.
+        Bronni bekor qilishdan oldin id ni olish uchun shuni chaqir."""
+        return _dump(run_tool("my_bookings", user, {"upcoming_only": upcoming_only}))
+
+    @tool
+    def cancel_booking(booking_id: int) -> str:
+        """Mijozning o'z bronini bekor qiladi. FAQAT mijoz qaysi bronni bekor qilishni aniq
+        tasdiqlagandan KEYIN chaqir. booking_id ni my_bookings dan ol."""
+        return _dump(run_tool("cancel_booking", user, {"booking_id": booking_id}))
+
+    @tool
     def search_shop_info(query: str, shop_id: int = 0) -> str:
         """Qoidalar (bekor qilish, kechikish, to'lov), qulayliklar, usta haqida ma'lumot va mijoz
         sharhlarini qidiradi. shop_id ixtiyoriy (0 = hammasi)."""
@@ -54,4 +83,7 @@ def make_tools(user):
             run_tool("search_shop_info", user, {"query": query, "shop_id": shop_id or None})
         )
 
-    return [list_shops, list_services, list_masters, get_available_slots, create_booking, search_shop_info]
+    return [
+        list_shops, list_services, list_masters, get_available_slots, find_best_slots,
+        create_booking, my_bookings, cancel_booking, search_shop_info,
+    ]

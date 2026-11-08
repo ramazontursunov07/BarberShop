@@ -3,7 +3,7 @@ from unittest import TestCase
 
 from .chunking import chunk_text
 from .graph_utils import flatten_content, last_user_text, make_query, parse_route, transcript
-from .slots import compute_slots
+from .slots import PARTS_OF_DAY, compute_slots, rank_slots
 
 DAY = date(2026, 11, 9)
 
@@ -100,3 +100,37 @@ class GraphUtilsTests(TestCase):
     def test_make_query_keeps_long_question(self):
         msgs = [Msg("human", "oldingi"), Msg("human", "Bolalar uchun chegirma bormi sizlarda?")]
         self.assertEqual(make_query(msgs), "Bolalar uchun chegirma bormi sizlarda?")
+
+
+class RankSlotsTests(TestCase):
+    D1 = date(2026, 11, 9)
+    D2 = date(2026, 11, 10)
+
+    def test_window_filters_by_part_of_day(self):
+        cands = [(self.D1, 1, "10:00"), (self.D1, 1, "17:00"), (self.D1, 1, "18:30")]
+        result = rank_slots(cands, window=PARTS_OF_DAY["evening"])
+        self.assertEqual([c[2] for c in result], ["17:00", "18:30"])
+
+    def test_window_end_is_exclusive(self):
+        cands = [(self.D1, 1, "11:30"), (self.D1, 1, "12:00")]
+        result = rank_slots(cands, window=PARTS_OF_DAY["morning"])
+        self.assertEqual([c[2] for c in result], ["11:30"])
+
+    def test_preferred_time_sorts_by_closeness(self):
+        cands = [(self.D1, 1, "10:00"), (self.D1, 1, "14:30"), (self.D1, 1, "15:30"), (self.D1, 1, "13:00")]
+        result = rank_slots(cands, preferred=time(15, 0))
+        self.assertEqual([c[2] for c in result][:2], ["14:30", "15:30"])
+
+    def test_earlier_day_wins_over_closer_time(self):
+        cands = [(self.D2, 1, "15:00"), (self.D1, 1, "09:00")]
+        result = rank_slots(cands, preferred=time(15, 0))
+        self.assertEqual(result[0][0], self.D1)
+
+    def test_without_preference_earliest_first_and_limit(self):
+        cands = [(self.D1, 2, "11:00"), (self.D1, 1, "09:00"), (self.D1, 1, "10:00")]
+        result = rank_slots(cands, limit=2)
+        self.assertEqual([c[2] for c in result], ["09:00", "10:00"])
+
+    def test_empty_and_zero_limit(self):
+        self.assertEqual(rank_slots([]), [])
+        self.assertEqual(rank_slots([(self.D1, 1, "09:00")], limit=0), [])

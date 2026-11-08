@@ -34,7 +34,7 @@ ROUTER_PROMPT = (
     "FAQAT bitta so'z yoz: info yoki booking.\n"
     "info: sartaroshxona qoidalari (bekor qilish, kechikish, to'lov), qulayliklar, aksiyalar, "
     "usta haqida ma'lumot yoki mijoz sharhlari haqidagi savol.\n"
-    "booking: bron qilish, bo'sh vaqt, xizmatlar va narxlar, sartaroshxonalar yoki ustalar ro'yxati, "
+    "booking: bron qilish, bronni bekor qilish, mening bronlarim, bo'sh vaqt, xizmatlar va narxlar, sartaroshxonalar yoki ustalar ro'yxati, "
     "bronni tasdiqlash ('ha', 'tasdiqlayman'), salomlashish va boshqa hamma narsa.\n"
     "Agar mijoz bron jarayonining o'rtasida bo'lsa (vaqt, usta yoki tasdiq haqida gapirsa), booking de."
 )
@@ -58,8 +58,14 @@ def _booking_prompt() -> str:
         "1. ID larni o'zing o'ylab topma, faqat tool natijalaridan ol.\n"
         "2. Narx va davomiylik uchun list_services, ustalar uchun list_masters ni ishlat.\n"
         "3. Qoidalar, qulayliklar va sharhlar haqidagi savollarga faqat search_shop_info natijasiga tayanib javob ber.\n"
-        "4. Bo'sh vaqtlarni faqat get_available_slots orqali tekshir.\n"
+        "4. Bo'sh vaqtlarni faqat get_available_slots yoki find_best_slots orqali tekshir.\n"
         "5. create_booking ni chaqirishdan oldin usta, xizmat, sana va vaqtni mijozdan aniq tasdiqlat.\n"
+        "6. Mijoz noaniq vaqt aytsa ('ertaga kechqurun', 'ertalab', 'soat 3 atrofida') yoki usta aytmasa, "
+        "find_best_slots ni ishlat. Natijadan 2-3 ta eng mos vaqtni taklif qil. Agar natijadagi sana "
+        "so'ralgan sanadan farq qilsa, buni mijozga aniq ayt. Bo'sh vaqt topilmasa, boshqa kun yoki "
+        "vaqtni taklif qil.\n"
+        "7. Mijozning bronlarini my_bookings orqali ko'rsat. Bronni bekor qilishdan oldin my_bookings dan id ni ol "
+        "va qaysi bronni bekor qilishni mijozdan aniq tasdiqlat, keyin cancel_booking ni chaqir.\n"
         "Javoblar qisqa va xushmuomala bo'lsin."
     )
 

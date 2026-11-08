@@ -19,7 +19,9 @@ from apps.masters.models import DayOff, Master, WorkSchedule
 from apps.services.models import Service
 from apps.shops.models import Shop
 
-from .slots import compute_slots
+from apps.bookings import services as booking_services
+
+from .slots import PARTS_OF_DAY, compute_slots, rank_slots
 
 # Sartaroshxona ish vaqtlari shu vaqt mintaqasida deb hisoblanadi
 SHOP_TZ = ZoneInfo("Asia/Tashkent")
@@ -157,6 +159,61 @@ def get_available_slots(user, master_id: int, service_id: int, date: str) -> dic
     }
 
 
+def find_best_slots(
+        user,
+        service_id: int,
+        date: str,
+        master_id: int | None = None,
+        part_of_day: str | None = None,
+        preferred_time: str | None = None,
+        search_days: int = 3,
+        limit: int = 5,
+) -> dict:
+    """Xizmat uchun eng mos bo'sh vaqtlarni topadi (usta tanlanmasa, hamma ustalar bo'yicha).
+
+    date dan boshlab search_days kun ichida qidiradi: sana so'ralgan kundan farq qilishi mumkin.
+    part_of_day: morning | afternoon | evening, preferred_time: 'HH:MM'.
+    """
+    start_day = _parse_date(date)
+    part_of_day = part_of_day or None
+    if part_of_day is not None and part_of_day not in PARTS_OF_DAY:
+        raise ValueError("part_of_day faqat morning, afternoon yoki evening bo'lishi mumkin")
+    preferred = _parse_time(preferred_time) if preferred_time else None
+    search_days = max(1, min(int(search_days or 1), 7))
+
+    service = Service.objects.select_related("shop").get(pk=service_id, is_active=True)
+    masters = Master.objects.filter(shop_id=service.shop_id, is_active=True).select_related("user", "shop")
+    if master_id:
+        masters = masters.filter(pk=master_id)
+        if not masters:
+            raise ValueError("Bu usta ushbu xizmat sartaroshxonasida topilmadi")
+
+    names = {m.id: _master_name(m) for m in masters}
+    candidates = []
+    for offset in range(search_days):
+        day = start_day + timedelta(days=offset)
+        for m in masters:
+            for hhmm in _get_slots(m, service, day):
+                candidates.append((day, m.id, hhmm))
+
+    best = rank_slots(
+        candidates,
+        window=PARTS_OF_DAY.get(part_of_day),
+        preferred=preferred,
+        limit=limit,
+    )
+    return {
+        "service": service.name,
+        "shop": service.shop.name,
+        "requested_date": date,
+        "searched_days": search_days,
+        "suggestions": [
+            {"date": d.isoformat(), "start_time": hhmm, "master_id": mid, "master": names[mid]}
+            for d, mid, hhmm in best
+        ],
+    }
+
+
 # ------------------------------------------------------------------ yozish
 
 def create_booking(user, master_id: int, service_id: int, date: str, start_time: str) -> dict:
@@ -199,3 +256,12 @@ def create_booking(user, master_id: int, service_id: int, date: str, start_time:
         "end_time": end_dt.strftime("%H:%M"),
         "status": "pending",
     }
+
+def my_bookings(user, upcoming_only: bool = True) -> dict:
+    """Mijozning o'z bronlari (faqat uniki: user tool'ga closure orqali bog'langan)."""
+    return {"bookings": booking_services.list_my_bookings(user, upcoming_only=upcoming_only)}
+
+
+def cancel_booking(user, booking_id: int) -> dict:
+    """Mijoz o'z bronini bekor qiladi (qoidalar bookings.services da)."""
+    return booking_services.cancel_by_client(user, booking_id)

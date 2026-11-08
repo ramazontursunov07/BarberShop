@@ -1,6 +1,6 @@
 import logging
 
-from openai import OpenAIError
+from openai import OpenAIError, RateLimitError
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -58,8 +58,20 @@ class ChatView(APIView):
 
         try:
             reply = _get_runner()(request.user, message, history)
-        except OpenAIError:
-            logger.exception("LLM provayderi xatosi")
+        except RateLimitError:
+            # RateLimitError OpenAIError'ning ichida, shuning uchun u ALBATTA oldin turishi kerak
+            logger.warning("LLM limiti tugadi")
+            return Response(
+                {"detail": "AI limiti tugadi, keyinroq urinib ko'ring"},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+        except OpenAIError as exc:
+            # Provayderning haqiqiy javobini logga yozamiz (kalit bu yerda chiqmaydi)
+            logger.exception(
+                "LLM provayderi xatosi: %s | body=%s",
+                getattr(exc, "message", exc),
+                getattr(exc, "body", None),
+            )
             return Response(
                 {"detail": "AI xizmati vaqtincha ishlamayapti"},
                 status=status.HTTP_502_BAD_GATEWAY,

@@ -59,6 +59,57 @@ TOOLS = [
         },
     },
     {
+        "name": "find_best_slots",
+        "description": (
+            "Mijozning xohishiga eng mos bo'sh vaqtlarni qidiradi: usta aytilmasa hamma ustalar bo'yicha, "
+            "bir necha kun oldinga. 'Ertaga kechqurun', 'ertalab', 'soat 15 atrofida' kabi noaniq "
+            "so'rovlar uchun shuni ishlat. Natijadagi sana so'ralgandan farq qilishi mumkin."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "service_id": {"type": "integer"},
+                "date": {"type": "string", "description": "Qidirish boshlanadigan sana, YYYY-MM-DD"},
+                "master_id": {"type": "integer", "description": "Ixtiyoriy: aniq usta (0 = hammasi)"},
+                "part_of_day": {
+                    "type": "string",
+                    "enum": ["morning", "afternoon", "evening"],
+                    "description": "ertalab=morning, kunduzi/tushdan keyin=afternoon, kechqurun=evening",
+                },
+                "preferred_time": {"type": "string", "description": "Ixtiyoriy: istalgan vaqt, HH:MM"},
+            },
+            "required": ["service_id", "date"],
+        },
+    },
+    {
+        "name": "my_bookings",
+        "description": (
+            "Mijozning o'z bronlari ro'yxati (id, usta, xizmat, sana, vaqt, holat). "
+            "Bronni bekor qilishdan oldin id ni olish uchun ham shuni chaqir."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "upcoming_only": {
+                    "type": "boolean",
+                    "description": "true = faqat kelgusi faol bronlar (standart), false = hammasi",
+                },
+            },
+        },
+    },
+    {
+        "name": "cancel_booking",
+        "description": (
+            "Mijozning o'z bronini bekor qiladi. Faqat mijoz qaysi bronni bekor qilishni "
+            "aniq tasdiqlagandan KEYIN chaqir. booking_id ni my_bookings dan ol."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"booking_id": {"type": "integer"}},
+            "required": ["booking_id"],
+        },
+    },
+    {
         "name": "create_booking",
         "description": (
             "Bron yaratadi. Faqat mijoz usta, xizmat, sana va vaqtni aniq tasdiqlagandan KEYIN chaqir."
@@ -89,6 +140,9 @@ _FUNCS = {
     "list_masters": services.list_masters,
     "get_available_slots": services.get_available_slots,
     "create_booking": services.create_booking,
+    "find_best_slots": services.find_best_slots,
+    "my_bookings": services.my_bookings,
+    "cancel_booking": services.cancel_booking,
     "search_shop_info": _search_shop_info,
 }
 
