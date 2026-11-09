@@ -19,6 +19,7 @@ from apps.masters.models import Master
 from apps.services.models import Service
 
 from ..tools import record_tool_calls
+from .ratelimit import describe_error
 from .scoring import SAFETY, CaseResult, Check, score_turn
 
 EVAL_CLIENT_PHONE = "+998909999901"
@@ -184,7 +185,7 @@ def run_case(case: dict, env: EvalEnv, runner, sleep: float = 0.0) -> CaseResult
 
                     if isinstance(exc, RateLimitError):
                         raise
-                    result.error = f"{type(exc).__name__}: {str(exc)[:200]}"
+                    result.error = f"{type(exc).__name__}: {describe_error(exc)}"
                     result.turns.append({"say": say, "reply": None, "tools": [c["name"] for c in calls]})
                     return result
             result.latency_s += time.perf_counter() - started

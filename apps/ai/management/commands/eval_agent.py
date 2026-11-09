@@ -7,10 +7,12 @@
     --limit 5              birinchi N ta holat
     --sleep 3              turlar orasida kutish (soniya): bepul LLM limitidan oshmaslik uchun
 
+Daqiqalik limit (429) chiqsa, buyruq kutib qayta urinadi; kunlik limit tugasa, to'xtaydi va sababini yozadi.
 Diqqat: har bir holat bir necha LLM so'rovi sarflaydi. Bepul limit kichik bo'lsa, avval --limit bilan sinang.
 Natija eval_reports/latest.md va eval_reports/<vaqt>.json fayllariga yoziladi.
 """
 import json
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -18,6 +20,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.ai.evals.cases import CASES, KNOWN_SETUPS
+from apps.ai.evals.ratelimit import is_daily_limit, parse_retry_delay
 from apps.ai.evals.scoring import render_markdown, summarize, validate_cases
 from apps.ai.llm import conf
 
@@ -66,9 +69,7 @@ class Command(BaseCommand):
         return cases
 
     def _run(self, cases, opts):
-        from openai import RateLimitError
-
-        from apps.ai.evals.runner import EvalEnv, fixed_today, run_case
+        from apps.ai.evals.runner import EvalEnv, fixed_today
         from apps.ai.views import _get_runner
 
         env = EvalEnv()
@@ -79,11 +80,10 @@ class Command(BaseCommand):
         try:
             with fixed_today(env.today):
                 for case in cases:
-                    try:
-                        res = run_case(case, env, runner, sleep=opts["sleep"])
-                    except RateLimitError:
-                        note = "LLM limiti tugadi: natija to'liq emas"
-                        self.stdout.write(self.style.ERROR(f"{case['id']}: LLM limiti tugadi, to'xtatildi."))
+                    res, stop_note = self._run_case(case, env, runner, opts["sleep"])
+                    if res is None:
+                        note = stop_note
+                        self.stdout.write(self.style.ERROR(f"{case['id']}: to'xtatildi. {stop_note}"))
                         break
                     results.append(res)
                     self._print_case(res)
@@ -106,6 +106,45 @@ class Command(BaseCommand):
             f"Natija: {summary['passed']}/{summary['total']} ({summary['pass_rate']:.0%})"))
         for cat, row in summary["by_category"].items():
             self.stdout.write(f"  {cat:15} {row['passed']}/{row['total']} ({row['rate']:.0%})")
+
+    MAX_RATE_WAITS = 3
+
+    @staticmethod
+    def _error_text(exc) -> str:
+        """Xato matni + provayder javobining tanasi (str(exc) ba'zan faqat 'Error code: 429' bo'ladi)."""
+        text = str(exc)
+        response = getattr(exc, "response", None)
+        try:
+            body = response.text if response is not None else ""
+        except Exception:
+            body = ""
+        return f"{text} {body}".strip() if body and body not in text else text
+
+    def _run_case(self, case, env, runner, sleep):
+        """Holatni ishga tushiradi. 429 da: kunlik limit bo'lsa to'xtaydi, aks holda kutib qayta urinadi.
+        Qaytaradi: (natija, None) yoki (None, to'xtash sababi)."""
+        from openai import RateLimitError
+
+        from apps.ai.evals.runner import run_case
+
+        waits = 0
+        while True:
+            try:
+                return run_case(case, env, runner, sleep=sleep), None
+            except RateLimitError as exc:
+                text = self._error_text(exc)
+                self.stdout.write(self.style.WARNING(f"{case['id']}: 429. Provayder xabari: {text[:600]}"))
+                if is_daily_limit(text):
+                    return None, ("Kunlik limit tugadi (bepul reja). Ertaga davom eting, "
+                                  "boshqa model (LLM_MODEL) yoki boshqa provayder tanlang.")
+                waits += 1
+                if waits > self.MAX_RATE_WAITS:
+                    return None, ("Daqiqalik limit qayta-qayta tugadi. --sleep ni oshiring (masalan 12) "
+                                  "yoki limiti yuqoriroq model tanlang.")
+                headers = getattr(getattr(exc, "response", None), "headers", None) or {}
+                delay = parse_retry_delay(text, headers.get("retry-after"))
+                self.stdout.write(f"   {delay:.0f} soniya kutamiz, so'ng qayta urinamiz ({waits}/{self.MAX_RATE_WAITS})...")
+                time.sleep(delay)
 
     def _print_case(self, res):
         if res.passed:
