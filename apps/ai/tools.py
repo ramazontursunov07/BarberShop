@@ -1,4 +1,7 @@
 """LLM'ga beriladigan tool'lar: sxema + bajaruvchi funksiya."""
+import threading
+from contextlib import contextmanager
+
 from . import services
 
 TOOLS = [
@@ -147,7 +150,7 @@ _FUNCS = {
 }
 
 
-def run_tool(name: str, user, arguments: dict) -> dict:
+def _execute(name: str, user, arguments: dict) -> dict:
     """Tool'ni xavfsiz bajaradi; xatolarni modelga o'qiladigan ko'rinishda qaytaradi."""
     func = _FUNCS.get(name)
     if func is None:
@@ -158,3 +161,32 @@ def run_tool(name: str, user, arguments: dict) -> dict:
         return {"error": str(exc)}
     except Exception as exc:  # DoesNotExist, noto'g'ri argumentlar va h.k.
         return {"error": f"{type(exc).__name__}: {exc}"}
+
+
+# Baholash (eval_agent) uchun: agent qaysi tool'larni qanday argument bilan chaqirganini yozib boradi.
+# Oddiy ishlashda o'chiq (None), shuning uchun veb-so'rovlarga ta'sir qilmaydi.
+_recorder_lock = threading.Lock()
+_recorder: list | None = None
+
+
+@contextmanager
+def record_tool_calls():
+    """with record_tool_calls() as calls: ... -> calls = [{"name", "arguments", "result"}, ...]"""
+    global _recorder
+    calls: list = []
+    with _recorder_lock:
+        _recorder = calls
+    try:
+        yield calls
+    finally:
+        with _recorder_lock:
+            _recorder = None
+
+
+def run_tool(name: str, user, arguments: dict) -> dict:
+    """Tool'ni bajaradi (xatolar modelga o'qiladigan ko'rinishda qaytadi) va kerak bo'lsa yozib qo'yadi."""
+    result = _execute(name, user, arguments)
+    recorder = _recorder
+    if recorder is not None:
+        recorder.append({"name": name, "arguments": dict(arguments), "result": result})
+    return result
