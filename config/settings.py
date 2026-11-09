@@ -144,3 +144,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
 ]
+
+# Telegram bot (apps/users/telegram.py). Bo'sh bo'lsa, bot endpointi o'chiq.
+TELEGRAM_BOT_SECRET = os.getenv("TELEGRAM_BOT_SECRET", "")
