@@ -1,6 +1,9 @@
 from rest_framework.filters import SearchFilter
+from rest_framework.parsers import FormParser, MultiPartParser
 
-from .serializers import ShopListSerializer, ShopDetailSerializer, ShopWriteSerializer
+from .serializers import (
+    ShopListSerializer, ShopDetailSerializer, ShopWriteSerializer, ShopPhotoCreateSerializer,
+)
 
 from rest_framework import generics, permissions
 from .models import Shop
@@ -48,5 +51,8 @@ class MyShopDetailView(generics.RetrieveUpdateAPIView):
 
 
 class ShopPhotoCreateView(generics.CreateAPIView):
-    serializer_class = ShopWriteSerializer
+    """POST /api/shops/photos/  (multipart/form-data: shop=<id>, image=<fayl>)"""
+
+    serializer_class = ShopPhotoCreateSerializer
     permission_classes = [IsOwnerRole]
+    parser_classes = [MultiPartParser, FormParser]

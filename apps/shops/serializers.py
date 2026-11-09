@@ -3,6 +3,8 @@ from rest_framework.exceptions import ValidationError
 
 from .models import Shop, ShopPhoto
 
+MAX_PHOTO_BYTES = 5 * 1024 * 1024  # 5 MB
+
 
 class ShopPhotoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -41,3 +43,26 @@ class ShopWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Ochilish vaqti yopilish vaqtidan oldin bo'lishi kerak.")
 
         return attrs
+
+
+class ShopPhotoCreateSerializer(serializers.ModelSerializer):
+    """Sartaroshxonaga rasm yuklash. Egasi faqat O'Z sartaroshxonasiga yuklay oladi."""
+
+    class Meta:
+        model = ShopPhoto
+        fields = ('id', 'shop', 'image')
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get('request')
+        if request is not None and request.user.is_authenticated:
+            # Boshqa eganing sartaroshxonasi "mavjud emas" deb ko'rinadi (mavjudligi ham oshkor bo'lmaydi)
+            fields['shop'].queryset = Shop.objects.filter(owner=request.user)
+        else:
+            fields['shop'].queryset = Shop.objects.none()
+        return fields
+
+    def validate_image(self, image):
+        if image.size > MAX_PHOTO_BYTES:
+            raise serializers.ValidationError("Rasm hajmi 5 MB dan oshmasligi kerak.")
+        return image
