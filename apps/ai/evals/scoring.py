@@ -325,5 +325,10 @@ def render_markdown(summary: dict, results: list, meta: dict) -> str:
                 lines.append(f"- XATO: {r.error}")
             for c in r.failures():
                 lines.append(f"- {c.name}: {c.detail}")
+            for t in r.turns:
+                lines.append(f"- Mijoz: {t.get('say')}")
+                names = [x["name"] if isinstance(x, dict) else str(x) for x in (t.get("tools") or [])]
+                lines.append(f"  - chaqirilgan tool'lar: {', '.join(names) or 'hech biri'}")
+                lines.append(f"  - agent javobi: {(t.get('reply') or '')[:400]!r}")
             lines.append("")
     return "\n".join(lines) + "\n"

@@ -17,13 +17,15 @@ booking : bron jarayoni. LLM tool'larni o'zi tanlaydi (bo'sh vaqt, bron yaratish
 """
 from datetime import date
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, MessagesState, StateGraph
-from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.prebuilt import ToolNode
 
 from . import rag
-from .graph_utils import flatten_content, make_query, parse_route, transcript
+from .confirmation import REJECT_MESSAGE, is_confirmation, needs_confirmation
+from .gemini_compat import add_thought_signature_bypass, is_gemini_endpoint
+from .graph_utils import flatten_content, last_user_text, make_query, parse_route, transcript
 from .lc_tools import make_tools
 from .llm import conf
 
@@ -59,13 +61,19 @@ def _booking_prompt() -> str:
         "2. Narx va davomiylik uchun list_services, ustalar uchun list_masters ni ishlat.\n"
         "3. Qoidalar, qulayliklar va sharhlar haqidagi savollarga faqat search_shop_info natijasiga tayanib javob ber.\n"
         "4. Bo'sh vaqtlarni faqat get_available_slots yoki find_best_slots orqali tekshir.\n"
-        "5. create_booking ni chaqirishdan oldin usta, xizmat, sana va vaqtni mijozdan aniq tasdiqlat.\n"
+        "5. create_booking ni FAQAT shu tartibda chaqir: (a) usta, xizmat, sana va vaqt aniq; "
+        "(b) bo'sh vaqtni tool bilan tekshirgansan; (c) mijozga xulosa yozib tasdiq so'ragansan, masalan: "
+        "'Jasur, Soch olish, ertaga 10:00, 50 000 so'm. Tasdiqlaysizmi?'; (d) mijoz KEYINGI xabarida aniq "
+        "'ha' yoki 'tasdiqlayman' degan. Mijozning dastlabki 'yozib qo'ying' so'rovi tasdiq HISOBLANMAYDI: "
+        "avval xulosa yozib so'ra. Mijoz vaqt yoki ustani o'zgartirsa, yangi xulosa yozib, qayta tasdiqlat.\n"
         "6. Mijoz noaniq vaqt aytsa ('ertaga kechqurun', 'ertalab', 'soat 3 atrofida') yoki usta aytmasa, "
         "find_best_slots ni ishlat. Natijadan 2-3 ta eng mos vaqtni taklif qil. Agar natijadagi sana "
         "so'ralgan sanadan farq qilsa, buni mijozga aniq ayt. Bo'sh vaqt topilmasa, boshqa kun yoki "
         "vaqtni taklif qil.\n"
         "7. Mijozning bronlarini my_bookings orqali ko'rsat. Bronni bekor qilishdan oldin my_bookings dan id ni ol "
         "va qaysi bronni bekor qilishni mijozdan aniq tasdiqlat, keyin cancel_booking ni chaqir.\n"
+        "8. Javob tili: mijozning OXIRGI xabari qaysi tilda bo'lsa, shu tilda yoz (tool natijalari "
+        "o'zbekcha bo'lsa ham). Rus tilida yozgan mijozga faqat rus tilida javob ber.\n"
         "Javoblar qisqa va xushmuomala bo'lsin."
     )
 
@@ -75,11 +83,24 @@ class State(MessagesState):
     context: str
 
 
+class _GeminiChatOpenAI(ChatOpenAI):
+    """Gemini 3 (OpenAI-mos rejim): tool chaqiruvlariga thought_signature qo'shadi (gemini_compat.py ga qarang)."""
+
+    def _get_request_payload(self, *args, **kwargs):
+        payload = super()._get_request_payload(*args, **kwargs)
+        add_thought_signature_bypass(payload.get("messages", []))
+        return payload
+
+
 def _llm() -> ChatOpenAI:
-    return ChatOpenAI(
+    base_url = conf("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+    # Moslashtirish faqat Gemini endpointi uchun: boshqa provayderlar nostandart maydonni rad etishi mumkin
+    use_gemini_fix = is_gemini_endpoint(base_url) and hasattr(ChatOpenAI, "_get_request_payload")
+    llm_class = _GeminiChatOpenAI if use_gemini_fix else ChatOpenAI
+    return llm_class(
         model=conf("LLM_MODEL", "llama-3.3-70b-versatile"),
         api_key=conf("LLM_API_KEY"),
-        base_url=conf("LLM_BASE_URL", "https://api.groq.com/openai/v1"),
+        base_url=base_url,
         temperature=0,
         max_tokens=1000,
         timeout=60,
@@ -111,12 +132,31 @@ def build_graph(user):
         resp = llm_with_tools.invoke([SystemMessage(content=_booking_prompt()), *state["messages"]])
         return {"messages": [resp]}
 
+    guard_on = conf("AI_CONFIRM_GUARD", "on").strip().lower() != "off"  # "off": faqat tajriba (A/B) uchun
+
+    def route_after_agent(state: State) -> str:
+        """Tool so'ralmagan bo'lsa tugaydi; bron/bekor qilish so'ralsa va mijoz tasdiqlamagan bo'lsa, rad etiladi."""
+        calls = getattr(state["messages"][-1], "tool_calls", None) or []
+        if not calls:
+            return END
+        if guard_on and needs_confirmation(calls) and not is_confirmation(last_user_text(state["messages"])):
+            return "reject"
+        return "tools"
+
+    def reject(state: State) -> dict:
+        """Tasdiqsiz bron/bekor qilishni bajarmaydi: har bir tool chaqiruviga rad javobini qaytaradi."""
+        calls = state["messages"][-1].tool_calls
+        return {"messages": [
+            ToolMessage(content=REJECT_MESSAGE, tool_call_id=call["id"], name=call["name"]) for call in calls
+        ]}
+
     graph = StateGraph(State)
     graph.add_node("router", router)
     graph.add_node("retrieve", retrieve)
     graph.add_node("answer_info", answer_info)
     graph.add_node("booking_agent", booking_agent)
     graph.add_node("tools", ToolNode(tools))
+    graph.add_node("reject", reject)
 
     graph.add_edge(START, "router")
     graph.add_conditional_edges(
@@ -124,8 +164,11 @@ def build_graph(user):
     )
     graph.add_edge("retrieve", "answer_info")
     graph.add_edge("answer_info", END)
-    graph.add_conditional_edges("booking_agent", tools_condition)  # tool so'ralsa -> "tools", aks holda END
+    graph.add_conditional_edges(
+        "booking_agent", route_after_agent, {"tools": "tools", "reject": "reject", END: END}
+    )
     graph.add_edge("tools", "booking_agent")
+    graph.add_edge("reject", "booking_agent")  # model rad javobini ko'rib, mijozdan tasdiq so'raydi
     return graph.compile()
 
 
