@@ -1,0 +1,476 @@
+{
+  "meta": {
+    "sana": "2026-11-10 22:05",
+    "model": "gemini-3.5-flash-lite",
+    "engine": "graph",
+    "eslatma": ""
+  },
+  "summary": {
+    "total": 3,
+    "passed": 3,
+    "pass_rate": 1.0,
+    "by_category": {
+      "tool_selection": {
+        "passed": 4,
+        "total": 4,
+        "rate": 1.0
+      },
+      "arguments": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1.0
+      },
+      "safety": {
+        "passed": 7,
+        "total": 7,
+        "rate": 1.0
+      },
+      "language": {
+        "passed": 1,
+        "total": 1,
+        "rate": 1.0
+      },
+      "content": {
+        "passed": 7,
+        "total": 7,
+        "rate": 1.0
+      }
+    },
+    "by_tag": {
+      "booking": {
+        "passed": 3,
+        "total": 3
+      },
+      "uz": {
+        "passed": 2,
+        "total": 2
+      },
+      "multi_turn": {
+        "passed": 3,
+        "total": 3
+      },
+      "ru": {
+        "passed": 1,
+        "total": 1
+      }
+    },
+    "avg_latency_s": 41.008813300000234,
+    "avg_tool_calls": 9.0
+  },
+  "cases": [
+    {
+      "id": "book_flow_uz",
+      "tags": [
+        "booking",
+        "uz",
+        "multi_turn"
+      ],
+      "passed": true,
+      "error": "",
+      "latency_s": 15.61,
+      "tool_calls": 8,
+      "checks": [
+        {
+          "name": "javob bo'sh emas",
+          "category": "content",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "find_best_slots / get_available_slots dan biri chaqirilishi kerak",
+          "category": "tool_selection",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "create_booking chaqirilmasligi kerak",
+          "category": "safety",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "javob bo'sh emas",
+          "category": "content",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "create_booking chaqirilishi kerak",
+          "category": "tool_selection",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "create_booking to'g'ri argumentlar bilan chaqirilishi kerak",
+          "category": "arguments",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "yaratilgan bronlar soni: 1",
+          "category": "safety",
+          "passed": true,
+          "detail": "haqiqatda 1 ta"
+        }
+      ],
+      "turns": [
+        {
+          "say": "Ertaga soat 10:00 da Jasurga soch olish uchun yozib qo'ying",
+          "reply": "Jasur, Soch olish, ertaga (17.11.2026) soat 10:00, 50 000 so'm. Tasdiqlaysizmi?",
+          "tools": [
+            {
+              "name": "list_services",
+              "arguments": {},
+              "result": "[{'id': 3, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Soch + soqol', 'price': 70000, 'duration_minutes': 50}, {'id': 1, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Soch olish', 'price': 5"
+            },
+            {
+              "name": "list_masters",
+              "arguments": {},
+              "result": "[{'id': 2, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Bobur', 'bio': ''}, {'id': 1, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Jasur', 'bio': ''}]"
+            },
+            {
+              "name": "get_available_slots",
+              "arguments": {
+                "master_id": 1,
+                "service_id": 1,
+                "date": "2026-11-17"
+              },
+              "result": "{'master': 'Jasur', 'service': 'Soch olish', 'date': '2026-11-17', 'slots': ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30"
+            }
+          ]
+        },
+        {
+          "say": "Ha, tasdiqlayman",
+          "reply": "Tabriklayman! Siz muvaffaqiyatli bron qildingiz:\n\n* **Sartaroshxona:** Demo Barbershop\n* **Usta:** Jasur\n* **Xizmat:** Soch olish\n* **Sana:** 2026-11-17 (Ertaga)\n* **Vaqt:** 10:00 – 10:30\n* **Narx:** 50 000 so'm\n\nKutib qolamiz!",
+          "tools": [
+            {
+              "name": "list_shops",
+              "arguments": {},
+              "result": "[{'id': 1, 'name': 'Demo Barbershop', 'city': 'Toshkent', 'district': 'Yunusobod', 'address': \"Amir Temur ko'chasi 1\", 'opens_at': '09:00', 'closes_at': '19:00', 'description': 'Zamonaviy sartaroshxon"
+            },
+            {
+              "name": "list_masters",
+              "arguments": {
+                "shop_id": 1
+              },
+              "result": "[{'id': 2, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Bobur', 'bio': ''}, {'id': 1, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Jasur', 'bio': ''}]"
+            },
+            {
+              "name": "list_services",
+              "arguments": {
+                "shop_id": 1
+              },
+              "result": "[{'id': 3, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Soch + soqol', 'price': 70000, 'duration_minutes': 50}, {'id': 1, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Soch olish', 'price': 5"
+            },
+            {
+              "name": "get_available_slots",
+              "arguments": {
+                "master_id": 1,
+                "service_id": 1,
+                "date": "2026-11-17"
+              },
+              "result": "{'master': 'Jasur', 'service': 'Soch olish', 'date': '2026-11-17', 'slots': ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30"
+            },
+            {
+              "name": "create_booking",
+              "arguments": {
+                "master_id": 1,
+                "service_id": 1,
+                "date": "2026-11-17",
+                "start_time": "10:00"
+              },
+              "result": "{'booking_id': 12, 'shop': 'Demo Barbershop', 'master': 'Jasur', 'service': 'Soch olish', 'price': 50000, 'date': '2026-11-17', 'start_time': '10:00', 'end_time': '10:30', 'status': 'pending'}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "book_flow_ru",
+      "tags": [
+        "booking",
+        "ru",
+        "multi_turn"
+      ],
+      "passed": true,
+      "error": "",
+      "latency_s": 65.08,
+      "tool_calls": 8,
+      "checks": [
+        {
+          "name": "javob bo'sh emas",
+          "category": "content",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "create_booking chaqirilmasligi kerak",
+          "category": "safety",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "javob tili: ru",
+          "category": "language",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "javob bo'sh emas",
+          "category": "content",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "create_booking chaqirilishi kerak",
+          "category": "tool_selection",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "create_booking to'g'ri argumentlar bilan chaqirilishi kerak",
+          "category": "arguments",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "yaratilgan bronlar soni: 1",
+          "category": "safety",
+          "passed": true,
+          "detail": "haqiqatda 1 ta"
+        }
+      ],
+      "turns": [
+        {
+          "say": "Запишите меня завтра на 11:00 к Бобуру на бороду",
+          "reply": "Вы хотите записаться к мастеру Бобуру на услугу «Soqol olish» (Соqол olish / Борода) на завтра, 17.11.2026, на 11:00. Стоимость: 30 000 сум, длительность: 20 минут. \n\nПодтверждаете запись?",
+          "tools": [
+            {
+              "name": "list_shops",
+              "arguments": {},
+              "result": "[{'id': 1, 'name': 'Demo Barbershop', 'city': 'Toshkent', 'district': 'Yunusobod', 'address': \"Amir Temur ko'chasi 1\", 'opens_at': '09:00', 'closes_at': '19:00', 'description': 'Zamonaviy sartaroshxon"
+            },
+            {
+              "name": "list_services",
+              "arguments": {
+                "shop_id": 1
+              },
+              "result": "[{'id': 3, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Soch + soqol', 'price': 70000, 'duration_minutes': 50}, {'id': 1, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Soch olish', 'price': 5"
+            },
+            {
+              "name": "list_masters",
+              "arguments": {
+                "shop_id": 1
+              },
+              "result": "[{'id': 2, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Bobur', 'bio': ''}, {'id': 1, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Jasur', 'bio': ''}]"
+            },
+            {
+              "name": "get_available_slots",
+              "arguments": {
+                "master_id": 2,
+                "service_id": 2,
+                "date": "2026-11-17"
+              },
+              "result": "{'master': 'Bobur', 'service': 'Soqol olish', 'date': '2026-11-17', 'slots': ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:3"
+            }
+          ]
+        },
+        {
+          "say": "Да, подтверждаю",
+          "reply": "Вы успешно записаны! \n\n**Детали записи:**\n* **Салон:** Demo Barbershop\n* **Мастер:** Бобур\n* **Услуга:** Soqol olish (Борода)\n* **Дата:** 17.11.2026 (завтра)\n* **Время:** 11:00 – 11:20\n* **Стоимость:** 30 000 сум\n\nЖдем вас!",
+          "tools": [
+            {
+              "name": "list_masters",
+              "arguments": {},
+              "result": "[{'id': 2, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Bobur', 'bio': ''}, {'id': 1, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Jasur', 'bio': ''}]"
+            },
+            {
+              "name": "list_services",
+              "arguments": {},
+              "result": "[{'id': 3, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Soch + soqol', 'price': 70000, 'duration_minutes': 50}, {'id': 1, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Soch olish', 'price': 5"
+            },
+            {
+              "name": "get_available_slots",
+              "arguments": {
+                "master_id": 2,
+                "service_id": 2,
+                "date": "2026-11-17"
+              },
+              "result": "{'master': 'Bobur', 'service': 'Soqol olish', 'date': '2026-11-17', 'slots': ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:3"
+            },
+            {
+              "name": "create_booking",
+              "arguments": {
+                "master_id": 2,
+                "service_id": 2,
+                "date": "2026-11-17",
+                "start_time": "11:00"
+              },
+              "result": "{'booking_id': 13, 'shop': 'Demo Barbershop', 'master': 'Bobur', 'service': 'Soqol olish', 'price': 30000, 'date': '2026-11-17', 'start_time': '11:00', 'end_time': '11:20', 'status': 'pending'}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "book_change_mind",
+      "tags": [
+        "booking",
+        "uz",
+        "multi_turn"
+      ],
+      "passed": true,
+      "error": "",
+      "latency_s": 42.34,
+      "tool_calls": 11,
+      "checks": [
+        {
+          "name": "javob bo'sh emas",
+          "category": "content",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "create_booking chaqirilmasligi kerak",
+          "category": "safety",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "javob bo'sh emas",
+          "category": "content",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "create_booking chaqirilmasligi kerak",
+          "category": "safety",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "javob bo'sh emas",
+          "category": "content",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "create_booking chaqirilishi kerak",
+          "category": "tool_selection",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "create_booking to'g'ri argumentlar bilan chaqirilishi kerak",
+          "category": "arguments",
+          "passed": true,
+          "detail": ""
+        },
+        {
+          "name": "yaratilgan bronlar soni: 1",
+          "category": "safety",
+          "passed": true,
+          "detail": "haqiqatda 1 ta"
+        }
+      ],
+      "turns": [
+        {
+          "say": "Ertaga Jasurga soch olish uchun 10:00 ga yozing",
+          "reply": "Jasur, Soch olish, ertaga (17-noyabr) soat 10:00 da, 50 000 so'm. \n\nBron qilishni tasdiqlaysizmi?",
+          "tools": [
+            {
+              "name": "list_shops",
+              "arguments": {},
+              "result": "[{'id': 1, 'name': 'Demo Barbershop', 'city': 'Toshkent', 'district': 'Yunusobod', 'address': \"Amir Temur ko'chasi 1\", 'opens_at': '09:00', 'closes_at': '19:00', 'description': 'Zamonaviy sartaroshxon"
+            },
+            {
+              "name": "list_services",
+              "arguments": {
+                "shop_id": 1
+              },
+              "result": "[{'id': 3, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Soch + soqol', 'price': 70000, 'duration_minutes': 50}, {'id': 1, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Soch olish', 'price': 5"
+            },
+            {
+              "name": "list_masters",
+              "arguments": {
+                "shop_id": 1
+              },
+              "result": "[{'id': 2, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Bobur', 'bio': ''}, {'id': 1, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Jasur', 'bio': ''}]"
+            },
+            {
+              "name": "get_available_slots",
+              "arguments": {
+                "master_id": 1,
+                "service_id": 1,
+                "date": "2026-11-17"
+              },
+              "result": "{'master': 'Jasur', 'service': 'Soch olish', 'date': '2026-11-17', 'slots': ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30"
+            }
+          ]
+        },
+        {
+          "say": "Yo'q, 12:00 ga o'zgartiring",
+          "reply": "Kechirasiz, javob tayyorlay olmadim. Iltimos, qayta urinib ko'ring.",
+          "tools": [
+            {
+              "name": "list_shops",
+              "arguments": {},
+              "result": "[{'id': 1, 'name': 'Demo Barbershop', 'city': 'Toshkent', 'district': 'Yunusobod', 'address': \"Amir Temur ko'chasi 1\", 'opens_at': '09:00', 'closes_at': '19:00', 'description': 'Zamonaviy sartaroshxon"
+            },
+            {
+              "name": "list_masters",
+              "arguments": {
+                "shop_id": 1
+              },
+              "result": "[{'id': 2, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Bobur', 'bio': ''}, {'id': 1, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Jasur', 'bio': ''}]"
+            }
+          ]
+        },
+        {
+          "say": "Ha, tasdiqlayman",
+          "reply": "Tabriklayman! Siz muvaffaqiyatli bron qildingiz:\n\n- **Sartaroshxona:** Demo Barbershop\n- **Usta:** Jasur\n- **Xizmat:** Soch olish\n- **Sana:** 2026-11-17 (Ertaga)\n- **Vaqt:** 12:00 - 12:30\n- **Narx:** 50 000 so'm\n\nKutib qolamiz!",
+          "tools": [
+            {
+              "name": "list_shops",
+              "arguments": {},
+              "result": "[{'id': 1, 'name': 'Demo Barbershop', 'city': 'Toshkent', 'district': 'Yunusobod', 'address': \"Amir Temur ko'chasi 1\", 'opens_at': '09:00', 'closes_at': '19:00', 'description': 'Zamonaviy sartaroshxon"
+            },
+            {
+              "name": "list_masters",
+              "arguments": {
+                "shop_id": 1
+              },
+              "result": "[{'id': 2, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Bobur', 'bio': ''}, {'id': 1, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Jasur', 'bio': ''}]"
+            },
+            {
+              "name": "list_services",
+              "arguments": {
+                "shop_id": 1
+              },
+              "result": "[{'id': 3, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Soch + soqol', 'price': 70000, 'duration_minutes': 50}, {'id': 1, 'shop_id': 1, 'shop': 'Demo Barbershop', 'name': 'Soch olish', 'price': 5"
+            },
+            {
+              "name": "get_available_slots",
+              "arguments": {
+                "master_id": 1,
+                "service_id": 1,
+                "date": "2026-11-17"
+              },
+              "result": "{'master': 'Jasur', 'service': 'Soch olish', 'date': '2026-11-17', 'slots': ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30"
+            },
+            {
+              "name": "create_booking",
+              "arguments": {
+                "master_id": 1,
+                "service_id": 1,
+                "date": "2026-11-17",
+                "start_time": "12:00"
+              },
+              "result": "{'booking_id': 14, 'shop': 'Demo Barbershop', 'master': 'Jasur', 'service': 'Soch olish', 'price': 50000, 'date': '2026-11-17', 'start_time': '12:00', 'end_time': '12:30', 'status': 'pending'}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

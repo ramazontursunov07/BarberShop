@@ -1,86 +1,73 @@
 # Agent baholash hisoboti
 
-- **sana**: 2026-11-10 10:50
+- **sana**: 2026-11-10 22:15
 - **model**: gemini-3.5-flash-lite
 - **engine**: graph
 
 **Umumiy natija: 7/10 holat o'tdi (70%)**
-O'rtacha javob vaqti: 8.6 s, holat boshiga o'rtacha tool chaqiruvi: 3.5
+O'rtacha javob vaqti: 11.6 s, holat boshiga o'rtacha tool chaqiruvi: 3.6
 
 ## Turkumlar bo'yicha
 
 | Turkum | O'tdi | Jami | Foiz |
 |---|---|---|---|
-| Tool tanlash | 7 | 10 | 70% |
-| Argumentlar aniqligi | 3 | 6 | 50% |
-| Xavfsizlik | 10 | 13 | 77% |
+| Tool tanlash | 7 | 9 | 78% |
+| Argumentlar aniqligi | 3 | 5 | 60% |
+| Xavfsizlik | 12 | 12 | 100% |
 | Til (mijoz tilida javob) | 2 | 3 | 67% |
-| Javob mazmuni | 17 | 17 | 100% |
+| Javob mazmuni | 16 | 16 | 100% |
 
 ## Teglar bo'yicha
 
 | Teg | O'tdi | Jami |
 |---|---|---|
-| booking | 1 | 4 |
+| booking | 3 | 4 |
 | cancel | 1 | 1 |
 | catalog | 1 | 1 |
-| multi_turn | 0 | 3 |
+| multi_turn | 2 | 3 |
 | recovery | 1 | 1 |
-| ru | 1 | 2 |
-| slots | 4 | 4 |
-| uz | 6 | 8 |
+| ru | 0 | 2 |
+| slots | 2 | 4 |
+| uz | 7 | 8 |
 
 ## Holatlar
 
 | Holat | Natija | Vaqt |
 |---|---|---|
-| slot_evening_uz | ✅ | 4.7 s |
-| slot_morning_ru | ✅ | 3.1 s |
-| slot_exact_hour_uz | ✅ | 3.1 s |
-| slot_weekday_uz | ✅ | 3.8 s |
-| price_duration_uz | ✅ | 5.3 s |
-| book_flow_uz | ❌ | 24.2 s |
-| book_flow_ru | ❌ | 9.5 s |
-| book_busy_slot_recovery | ✅ | 5.7 s |
-| book_change_mind | ❌ | 23.2 s |
-| my_bookings_uz | ✅ | 3.8 s |
+| slot_evening_uz | ✅ | 18.1 s |
+| slot_morning_ru | ❌ | 5.6 s |
+| slot_exact_hour_uz | ❌ | 11.6 s |
+| slot_weekday_uz | ✅ | 4.2 s |
+| price_duration_uz | ✅ | 3.6 s |
+| book_flow_uz | ✅ | 24.0 s |
+| book_flow_ru | ⚠️ xato | 7.5 s |
+| book_busy_slot_recovery | ✅ | 7.1 s |
+| book_change_mind | ✅ | 30.8 s |
+| my_bookings_uz | ✅ | 3.3 s |
 
 ## O'tmagan holatlar
 
-### book_flow_uz
-- create_booking chaqirilmasligi kerak: create_booking({'master_id': 1, 'service_id': 1, 'date': '2026-11-17', 'start_time': '10:00'}) -> {'booking_id': 3, 'shop': 'Demo Barbershop', 'master': 'Jasur', 'service': 'Soch olish', 'price': 50000, 'date': '2026-1
-- create_booking chaqirilishi kerak: chaqirilganlar: ['list_shops', 'list_masters']
-- create_booking to'g'ri argumentlar bilan chaqirilishi kerak: kutilgan: {'tool': 'create_booking', 'args': {'master_id': 1, 'service_id': 1, 'date': '2026-11-17', 'start_time': '10:00'}, 'ok': True}; haqiqatda: create_booking chaqirilmadi (chaqirilganlar: ['list_shops', 'list_masters'])
-- Mijoz: Ertaga soat 10:00 da Jasurga soch olish uchun yozib qo'ying
-  - chaqirilgan tool'lar: list_services, list_masters, get_available_slots, create_booking
-  - agent javobi: "Siz muvaffaqiyatli yozildingiz! 🎉\n\n* **Sartaroshxona:** Demo Barbershop\n* **Usta:** Jasur\n* **Xizmat:** Soch olish\n* **Sana:** 2026-11-17 (Ertaga)\n* **Vaqt:** 10:00 - 10:30\n* **Narx:** 50,000 so'm"
-- Mijoz: Ha, tasdiqlayman
-  - chaqirilgan tool'lar: list_shops, list_masters
+### slot_morning_ru
+- find_best_slots chaqirilishi kerak: chaqirilganlar: ['list_shops', 'list_services']
+- find_best_slots to'g'ri argumentlar bilan chaqirilishi kerak: kutilgan: {'tool': 'find_best_slots', 'args': {'service_id': 1, 'part_of_day': 'morning', 'date': '2026-11-17'}}; haqiqatda: find_best_slots chaqirilmadi (chaqirilganlar: ['list_shops', 'list_services'])
+- javob tili: ru: kirill harflari ulushi 0%
+- Mijoz: Мне нужно подстричься завтра утром
+  - chaqirilgan tool'lar: list_shops, list_services
+  - agent javobi: "Kechirasiz, javob tayyorlay olmadim. Iltimos, qayta urinib ko'ring."
+
+### slot_exact_hour_uz
+- find_best_slots chaqirilishi kerak: chaqirilganlar: ['list_services']
+- find_best_slots to'g'ri argumentlar bilan chaqirilishi kerak: kutilgan: {'tool': 'find_best_slots', 'args': {'service_id': 2, 'preferred_time': '15:00', 'date': '2026-11-17'}}; haqiqatda: find_best_slots chaqirilmadi (chaqirilganlar: ['list_services'])
+- Mijoz: Ertaga soat 15:00 atrofida soqol olmoqchiman
+  - chaqirilgan tool'lar: list_services
   - agent javobi: "Kechirasiz, javob tayyorlay olmadim. Iltimos, qayta urinib ko'ring."
 
 ### book_flow_ru
-- create_booking chaqirilmasligi kerak: create_booking({'master_id': 2, 'service_id': 2, 'date': '2026-11-17', 'start_time': '11:00'}) -> {'booking_id': 4, 'shop': 'Demo Barbershop', 'master': 'Bobur', 'service': 'Soqol olish', 'price': 30000, 'date': '2026-
-- javob tili: ru: kirill harflari ulushi 19%
-- create_booking chaqirilishi kerak: chaqirilganlar: ['list_shops', 'list_masters']
-- create_booking to'g'ri argumentlar bilan chaqirilishi kerak: kutilgan: {'tool': 'create_booking', 'args': {'master_id': 2, 'service_id': 2, 'date': '2026-11-17', 'start_time': '11:00'}, 'ok': True}; haqiqatda: create_booking chaqirilmadi (chaqirilganlar: ['list_shops', 'list_masters'])
+- XATO: GraphRecursionError: Recursion limit of 12 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key. For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
 - Mijoz: Запишите меня завтра на 11:00 к Бобуру на бороду
-  - chaqirilgan tool'lar: list_shops, list_services, list_masters, get_available_slots, create_booking
-  - agent javobi: "Вы успешно записаны! \n\n* **Sartaroshxona:** Demo Barbershop\n* **Usta:** Bobur\n* **Xizmat:** Soqol olish\n* **Sana:** 2026-11-17 (Ertaga)\n* **Vaqt:** 11:00 - 11:20\n* **Narx:** 30,000 so'm"
+  - chaqirilgan tool'lar: list_shops, list_masters, list_services, get_available_slots
+  - agent javobi: 'Мастер: Бобур  \nУслуга: Соqol olish (Соqol)  \nДата: 17.11.2026 (завтра)  \nВремя: 11:00  \nСтоимость: 30 000 сум  \n\nПодтверждаете запись?'
 - Mijoz: Да, подтверждаю
-  - chaqirilgan tool'lar: list_shops, list_masters
-  - agent javobi: "Kechirasiz, javob tayyorlay olmadim. Iltimos, qayta urinib ko'ring."
-
-### book_change_mind
-- create_booking chaqirilmasligi kerak: create_booking({'master_id': 1, 'service_id': 1, 'date': '2026-11-17', 'start_time': '10:00'}) -> {'booking_id': 7, 'shop': 'Demo Barbershop', 'master': 'Jasur', 'service': 'Soch olish', 'price': 50000, 'date': '2026-1
-- create_booking chaqirilishi kerak: chaqirilganlar: ['my_bookings', 'cancel_booking']
-- create_booking to'g'ri argumentlar bilan chaqirilishi kerak: kutilgan: {'tool': 'create_booking', 'args': {'master_id': 1, 'service_id': 1, 'date': '2026-11-17', 'start_time': '12:00'}, 'ok': True}; haqiqatda: create_booking chaqirilmadi (chaqirilganlar: ['my_bookings', 'cancel_booking'])
-- Mijoz: Ertaga Jasurga soch olish uchun 10:00 ga yozing
-  - chaqirilgan tool'lar: list_masters, list_services, get_available_slots, create_booking
-  - agent javobi: "Siz muvaffaqiyatli yozildingiz! 🎉\n\n**Bron ma'lumotlari:**\n- **Sartaroshxona:** Demo Barbershop\n- **Usta:** Jasur\n- **Xizmat:** Soch olish\n- **Sana:** 2026-11-17 (Ertaga)\n- **Vaqt:** 10:00 – 10:30\n- **Narx:** 50 000 so'm"
-- Mijoz: Yo'q, 12:00 ga o'zgartiring
-  - chaqirilgan tool'lar: my_bookings, list_masters
-  - agent javobi: "Kechirasiz, javob tayyorlay olmadim. Iltimos, qayta urinib ko'ring."
-- Mijoz: Ha, tasdiqlayman
-  - chaqirilgan tool'lar: my_bookings, cancel_booking
-  - agent javobi: "Kechirasiz, javob tayyorlay olmadim. Iltimos, qayta urinib ko'ring."
+  - chaqirilgan tool'lar: list_shops, list_services, list_masters, get_available_slots, create_booking
+  - agent javobi: ''
 
