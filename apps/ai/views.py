@@ -2,12 +2,18 @@ import logging
 
 from openai import OpenAIError, RateLimitError
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
+from apps.shops.models import Shop
+from apps.shops.permissions import IsOwnerRole
+
 from .llm import conf
+from .review_insights import InsightsError, analyze_shop_reviews
+from .speech import MAX_AUDIO_BYTES, EmptyTranscript, SpeechNotConfigured, transcribe
 
 logger = logging.getLogger(__name__)
 
@@ -83,3 +89,69 @@ class ChatView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         return Response({"reply": reply})
+
+
+class AiInsightsThrottle(UserRateThrottle):
+    scope = "ai_insights"
+    rate = "10/min"
+
+
+class ReviewInsightsView(APIView):
+    """Egasiga o'z sartaroshxonasi sharhlari tahlili: GET /api/ai/review-insights/?shop=<id>"""
+
+    permission_classes = [IsAuthenticated, IsOwnerRole]
+    throttle_classes = [AiInsightsThrottle]
+
+    def get(self, request):
+        try:
+            shop_id = int(request.query_params.get("shop", ""))
+        except ValueError:
+            return Response({"detail": "shop majburiy (son)"}, status=status.HTTP_400_BAD_REQUEST)
+        # Faqat o'z sartaroshxonasi: boshqaning sartaroshxonasi 404 beradi (mavjudligi ham sezilmaydi)
+        shop = Shop.objects.filter(id=shop_id, owner=request.user).first()
+        if shop is None:
+            return Response({"detail": "Sartaroshxona topilmadi"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            return Response(analyze_shop_reviews(shop))
+        except RateLimitError:
+            logger.warning("LLM limiti tugadi (sharhlar tahlili)")
+            return Response({"detail": "AI limiti tugadi, keyinroq urinib ko'ring"},
+                            status=status.HTTP_429_TOO_MANY_REQUESTS)
+        except (OpenAIError, InsightsError):
+            logger.exception("Sharhlar tahlilida xato")
+            return Response({"detail": "Tahlilni hozir tayyorlab bo'lmadi"},
+                            status=status.HTTP_502_BAD_GATEWAY)
+
+
+class AiTranscribeThrottle(UserRateThrottle):
+    scope = "ai_transcribe"
+    rate = "20/min"
+
+
+class TranscribeView(APIView):
+    """Ovozli xabarni matnga aylantiradi: POST multipart, maydon nomi `audio`. Javob: {"text": "..."}"""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [AiTranscribeThrottle]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        audio = request.FILES.get("audio")
+        if audio is None or audio.size == 0:
+            return Response({"detail": "audio fayli majburiy"}, status=status.HTTP_400_BAD_REQUEST)
+        if audio.size > MAX_AUDIO_BYTES:
+            return Response({"detail": "Ovozli xabar juda katta"}, status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
+        try:
+            text = transcribe(audio.read(), audio.name)
+        except SpeechNotConfigured:
+            return Response({"detail": "Ovozli xabarlar sozlanmagan"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except EmptyTranscript:
+            return Response({"detail": "Ovozni tushunib bo'lmadi"}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        except RateLimitError:
+            logger.warning("STT limiti tugadi")
+            return Response({"detail": "AI limiti tugadi, keyinroq urinib ko'ring"},
+                            status=status.HTTP_429_TOO_MANY_REQUESTS)
+        except OpenAIError as exc:
+            logger.error("STT provayderi xatosi: %s", getattr(exc, "message", exc))
+            return Response({"detail": "Ovozni matnga aylantirib bo'lmadi"}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response({"text": text})

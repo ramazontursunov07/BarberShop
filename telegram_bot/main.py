@@ -4,11 +4,13 @@ Ishga tushirish (loyiha ildizidan, Django server ishlab turganda):
     python -m telegram_bot.main
 """
 import asyncio
+import io
 import logging
 from collections import defaultdict, deque
 
 import httpx
 from aiogram import Bot, Dispatcher, F
+from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandStart
 from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
@@ -18,6 +20,8 @@ from .config import load_settings
 logger = logging.getLogger("telegram_bot")
 
 HISTORY_LEN = 20  # API ham oxirgi 20 xabarni qabul qiladi
+MAX_VOICE_SECONDS = 60
+MAX_VOICE_BYTES = 2 * 1024 * 1024  # serverdagi chegara bilan bir xil
 
 settings = load_settings()
 backend = BackendClient(settings.api_base_url, settings.bot_secret)
@@ -35,7 +39,8 @@ CONTACT_KEYBOARD = ReplyKeyboardMarkup(
 
 WELCOME = (
     "Salom! Men sartaroshxona bron yordamchisiman.\n"
-    "Oddiy gapiring, masalan: «Ertaga kechqurun soch olish kerak, Jasur akaga».\n\n"
+    "Oddiy gapiring, masalan: «Ertaga kechqurun soch olish kerak, Jasur akaga». "
+    "Ovozli xabar ham yuborishingiz mumkin 🎤\n\n"
     "/reset: suhbatni yangidan boshlash"
 )
 ASK_CONTACT = "Boshlash uchun pastdagi tugma orqali telefon raqamingizni yuboring."
@@ -93,9 +98,86 @@ async def on_contact(message: Message) -> None:
     await message.answer("Raqamingiz tasdiqlandi ✅\n\n" + WELCOME, reply_markup=ReplyKeyboardRemove())
 
 
+async def get_token_or_prompt(message: Message) -> str | None:
+    """Foydalanuvchi tokenini oladi. Bog'lanmagan bo'lsa raqam so'raydi; None qaytarsa, javob berib bo'lingan."""
+    try:
+        return await backend.get_token(message.from_user.id)
+    except NotLinked:
+        await ask_contact(message)
+    except (ApiError, httpx.HTTPError):
+        logger.exception("auth: backend xatosi")
+        await message.answer("Xizmat vaqtincha ishlamayapti, keyinroq urinib ko'ring.")
+    return None
+
+
+async def chat_round(message: Message, bot: Bot, user_id: int, token: str, text: str) -> None:
+    """Matnni AI agentga yuboradi va javobni qaytaradi (matnli va ovozli xabar uchun umumiy)."""
+    await bot.send_chat_action(message.chat.id, "typing")
+    try:
+        reply = await backend.chat(token, text, list(histories[user_id]))
+    except ApiError as exc:
+        if exc.status == 429:
+            await message.answer("Hozir juda ko'p so'rov bor, birozdan keyin qayta yozing.")
+        elif exc.status == 400:
+            await message.answer(exc.detail)
+        else:
+            logger.error("chat: backend xatosi %s", exc)
+            await message.answer("AI yordamchi vaqtincha ishlamayapti, keyinroq urinib ko'ring.")
+        return
+    except httpx.HTTPError:
+        logger.exception("chat: backendga ulanib bo'lmadi")
+        await message.answer("Xizmat vaqtincha ishlamayapti, keyinroq urinib ko'ring.")
+        return
+
+    history = histories[user_id]
+    history.append({"role": "user", "content": text})
+    history.append({"role": "assistant", "content": reply})
+    await message.answer(reply)  # oddiy matn: LLM belgilari Telegram formatini buzmasin
+
+
 @dp.message(F.voice)
-async def on_voice(message: Message) -> None:
-    await message.answer("Ovozli xabarlar hali qo'llab-quvvatlanmaydi. Iltimos, matn yozing.")
+async def on_voice(message: Message, bot: Bot) -> None:
+    voice = message.voice
+    if voice.duration > MAX_VOICE_SECONDS or (voice.file_size or 0) > MAX_VOICE_BYTES:
+        await message.answer(f"Ovozli xabar juda uzun. {MAX_VOICE_SECONDS} soniyagacha qisqaroq yuboring.")
+        return
+
+    user_id = message.from_user.id
+    async with locks[user_id]:
+        token = await get_token_or_prompt(message)
+        if token is None:
+            return
+
+        await bot.send_chat_action(message.chat.id, "typing")
+        buffer = io.BytesIO()
+        try:
+            await bot.download(voice, destination=buffer)
+        except TelegramAPIError:
+            logger.exception("voice: faylni yuklab bo'lmadi")
+            await message.answer("Ovozli xabarni olib bo'lmadi, qayta yuboring yoki matn yozing.")
+            return
+
+        try:
+            text = await backend.transcribe(token, buffer.getvalue())
+        except ApiError as exc:
+            if exc.status == 422:
+                await message.answer("Ovozni tushunolmadim. Qayta, aniqroq gapiring yoki matn yozing.")
+            elif exc.status == 429:
+                await message.answer("Hozir juda ko'p so'rov bor, birozdan keyin qayta yuboring.")
+            elif exc.status == 503:
+                await message.answer("Ovozli xabarlar hozir ishlamayapti. Iltimos, matn yozing.")
+            else:
+                logger.error("voice: backend xatosi %s", exc)
+                await message.answer("Ovozni matnga aylantirib bo'lmadi. Iltimos, matn yozing.")
+            return
+        except httpx.HTTPError:
+            logger.exception("voice: backendga ulanib bo'lmadi")
+            await message.answer("Xizmat vaqtincha ishlamayapti, keyinroq urinib ko'ring.")
+            return
+
+        # Tanilgan matnni ko'rsatamiz: noto'g'ri tanilsa, mijoz darhol sezadi va to'g'rilaydi
+        await message.answer(f"🎤 Eshitdim: «{text}»")
+        await chat_round(message, bot, user_id, token, text)
 
 
 @dp.message(F.text)
@@ -106,37 +188,10 @@ async def on_text(message: Message, bot: Bot) -> None:
         return
 
     async with locks[user_id]:  # bir foydalanuvchining xabarlari ketma-ket ishlanadi
-        try:
-            token = await backend.get_token(user_id)
-        except NotLinked:
-            await ask_contact(message)
+        token = await get_token_or_prompt(message)
+        if token is None:
             return
-        except (ApiError, httpx.HTTPError):
-            logger.exception("auth: backend xatosi")
-            await message.answer("Xizmat vaqtincha ishlamayapti, keyinroq urinib ko'ring.")
-            return
-
-        await bot.send_chat_action(message.chat.id, "typing")
-        try:
-            reply = await backend.chat(token, text, list(histories[user_id]))
-        except ApiError as exc:
-            if exc.status == 429:
-                await message.answer("Hozir juda ko'p so'rov bor, birozdan keyin qayta yozing.")
-            elif exc.status == 400:
-                await message.answer(exc.detail)
-            else:
-                logger.error("chat: backend xatosi %s", exc)
-                await message.answer("AI yordamchi vaqtincha ishlamayapti, keyinroq urinib ko'ring.")
-            return
-        except httpx.HTTPError:
-            logger.exception("chat: backendga ulanib bo'lmadi")
-            await message.answer("Xizmat vaqtincha ishlamayapti, keyinroq urinib ko'ring.")
-            return
-
-        history = histories[user_id]
-        history.append({"role": "user", "content": text})
-        history.append({"role": "assistant", "content": reply})
-        await message.answer(reply)  # oddiy matn: LLM belgilari Telegram formatini buzmasin
+        await chat_round(message, bot, user_id, token, text)
 
 
 async def main() -> None:

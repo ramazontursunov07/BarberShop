@@ -58,5 +58,15 @@ class BackendClient:
             raise ApiError(resp.status_code, _detail(resp))
         return resp.json()["reply"]
 
+    async def transcribe(self, token: str, audio: bytes, filename: str = "voice.ogg") -> str:
+        resp = await self._http.post(
+            "/api/ai/transcribe/",
+            files={"audio": (filename, audio, "audio/ogg")},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        if resp.status_code != 200:
+            raise ApiError(resp.status_code, _detail(resp))
+        return resp.json()["text"]
+
     async def close(self) -> None:
         await self._http.aclose()
