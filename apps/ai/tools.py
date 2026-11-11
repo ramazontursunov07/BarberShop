@@ -133,6 +133,8 @@ TOOLS = [
                 "service_id": {"type": "integer"},
                 "date": {"type": "string", "description": "YYYY-MM-DD"},
                 "start_time": {"type": "string", "description": "HH:MM"},
+                "promo_code": {"type": "string", "description": "Ixtiyoriy: mijoz aytgan promokod"},
+                "certificate_code": {"type": "string", "description": "Ixtiyoriy: mijoz aytgan sovg'a sertifikati kodi"},
             },
             "required": ["master_id", "service_id", "date", "start_time"],
         },

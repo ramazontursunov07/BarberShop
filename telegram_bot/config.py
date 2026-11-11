@@ -13,6 +13,7 @@ class Settings:
     bot_token: str
     bot_secret: str
     api_base_url: str
+    pexels_api_key: str = ""
 
 
 def load_settings() -> Settings:
@@ -26,4 +27,5 @@ def load_settings() -> Settings:
         bot_token=token,
         bot_secret=secret,
         api_base_url=os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/"),
+        pexels_api_key=os.getenv("PEXELS_API_KEY", "").strip(),
     )

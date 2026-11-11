@@ -3,7 +3,7 @@
 Shunda qoidalar (bekor qilish muddati, status o'tishlari, bloklash) bitta joyda turadi
 va AI agent API'dan farqli qoida bilan ishlab ketmaydi.
 """
-from datetime import timedelta
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from django.db import transaction
@@ -94,7 +94,73 @@ def cancel_by_client(user, booking_id: int) -> dict:
             )
         booking.status = Booking.Status.CANCELLED
         booking.save(update_fields=["status"])
+        _free_slot_hook(booking)
     return booking_to_dict(booking)
+
+
+def reschedule_by_client(user, booking_id: int, date: str, start_time: str, master_id: int | None = None) -> dict:
+    """Mijoz o'z bronini boshqa vaqtga (xohlasa boshqa ustaga, shu sartaroshxonada) ko'chiradi.
+
+    Qoidalar bekor qilish bilan bir xil: eski vaqtgacha kamida CANCEL_BEFORE qolgan bo'lishi kerak.
+    Narx va chegirmalar o'zgarmaydi (qayta hisoblanmaydi).
+    """
+    # Lazy import: apps.ai.services ham shu modulni import qiladi
+    from apps.ai import services as availability
+    from apps.masters.models import Master
+
+    try:
+        day = availability._parse_date(date)
+        start = availability._parse_time(start_time)
+    except ValueError as exc:
+        raise BookingError(str(exc))
+
+    with transaction.atomic():
+        booking = (
+            _with_relations(Booking.objects.select_for_update())
+            .filter(pk=booking_id, client=user)
+            .first()
+        )
+        if booking is None:
+            raise BookingError("Bron topilmadi")
+        if booking.status not in ACTIVE_STATUSES:
+            raise BookingError(f"Bu bronni ko'chirib bo'lmaydi (holati: {booking.status})")
+        if booking.start_time - timezone.now() < CANCEL_BEFORE:
+            raise BookingError(
+                "Bronni kamida 2 soat oldin ko'chirish mumkin. Iltimos, sartaroshxonaga qo'ng'iroq qiling."
+            )
+
+        target = booking.master
+        if master_id and master_id != booking.master_id:
+            target = Master.objects.filter(pk=master_id, is_active=True, shop_id=booking.master.shop_id).first()
+            if target is None:
+                raise BookingError("Usta topilmadi")
+        # Ustani qulflaymiz: ikki so'rov bir slotni olmasin
+        Master.objects.select_for_update().get(pk=target.pk)
+        target = Master.objects.select_related("user", "shop").get(pk=target.pk)
+
+        if start_time not in availability._get_slots(target, booking.service, day, exclude_booking_id=booking.pk):
+            raise BookingError("Bu vaqt band yoki ish vaqtidan tashqarida. Boshqa vaqt tanlang.")
+
+        old_copy = Booking(master=booking.master, client=booking.client, service=booking.service,
+                           start_time=booking.start_time, end_time=booking.end_time)
+        new_start = datetime.combine(day, start, tzinfo=SHOP_TZ)
+        if new_start <= timezone.now():
+            raise BookingError("O'tgan vaqtga ko'chirib bo'lmaydi")
+        booking.master = target
+        booking.start_time = new_start
+        booking.end_time = new_start + timedelta(minutes=booking.service.duration_minutes)
+        booking.save(update_fields=["master", "start_time", "end_time"])
+        # Eslatmalar yangi vaqt uchun qayta yuborilishi kerak
+        booking.notifications.all().delete()
+        _free_slot_hook(old_copy)
+    return booking_to_dict(booking)
+
+
+def _free_slot_hook(booking: Booking) -> None:
+    """Joy bo'shaganda kutish ro'yxatidagilarga xabar (tranzaksiya tugagach)."""
+    from .waitlist import schedule_notify_freed
+
+    schedule_notify_freed(booking)
 
 
 # ------------------------------------------------------------------ usta / egasi
@@ -131,6 +197,8 @@ def change_status(actor, booking_id: int, new_status: str) -> dict:
 
         if new_status == Booking.Status.NO_SHOW:
             _register_no_show(booking.client)
+        if new_status == Booking.Status.CANCELLED:
+            _free_slot_hook(booking)
     return booking_to_dict(booking)
 
 
@@ -149,4 +217,3 @@ def _register_no_show(client) -> None:
         type(client).objects.filter(pk=client.pk).update(
             blocked_until=timezone.now() + timedelta(days=BLOCK_DAYS)
         )
-        

@@ -39,6 +39,9 @@ INSTALLED_APPS = [
     "apps.reviews",
     "apps.ai",
     "apps.insights",
+    "apps.promotions",
+    "apps.products",
+    "apps.faq",
 ]
 
 AUTH_USER_MODEL = "users.User"

@@ -22,6 +22,14 @@ class Booking(models.Model):
     end_time = models.DateTimeField()
     price = models.DecimalField(max_digits=10, decimal_places=0, validators=[MinValueValidator(0)])
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    # Chegirmalar (apps.promotions): price = mijoz to'laydigan yakuniy summa
+    discount_amount = models.PositiveIntegerField(default=0, help_text="Chegirma summasi (so'm)")
+    promo_code = models.ForeignKey("promotions.PromoCode", null=True, blank=True, on_delete=models.SET_NULL,
+                                   related_name="bookings")
+    loyalty_applied = models.BooleanField(default=False, help_text="Sodiqlik chegirmasi ishlatilgan")
+    certificate = models.ForeignKey("promotions.GiftCertificate", null=True, blank=True,
+                                    on_delete=models.SET_NULL, related_name="bookings")
+    certificate_amount = models.PositiveIntegerField(default=0, help_text="Sertifikatdan yechilgan summa (so'm)")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -36,3 +44,35 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"{self.client} - {self.master} ({self.start_time:%Y-%m-%d %H:%M})"
+
+
+class WaitlistEntry(models.Model):
+    """Kutish ro'yxati: kerakli vaqt band bo'lsa, bo'sh joy chiqqanda mijozga xabar beriladi."""
+
+    class Status(models.TextChoices):
+        WAITING = 'waiting', 'Kutmoqda'
+        NOTIFIED = 'notified', 'Xabar yuborilgan'
+        BOOKED = 'booked', 'Bron qilingan'
+        CANCELLED = 'cancelled', 'Bekor qilingan'
+
+    client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='waitlist_entries')
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='waitlist_entries')
+    master = models.ForeignKey(Master, null=True, blank=True, on_delete=models.CASCADE,
+                               related_name='waitlist_entries', help_text="Bo'sh = istalgan usta")
+    date = models.DateField()
+    from_time = models.TimeField(null=True, blank=True, help_text="Bo'sh = kun bo'yi")
+    to_time = models.TimeField(null=True, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.WAITING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    notified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [models.Index(fields=['service', 'date', 'status'])]
+
+    def clean(self):
+        if self.from_time and self.to_time and self.from_time >= self.to_time:
+            raise ValidationError("Boshlanish vaqti tugash vaqtidan oldin bo'lishi kerak.")
+
+    def __str__(self):
+        return f"{self.client} kutmoqda: {self.service.name} {self.date}"

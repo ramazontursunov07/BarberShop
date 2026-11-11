@@ -5,13 +5,22 @@ from .serializers import (
     ShopListSerializer, ShopDetailSerializer, ShopWriteSerializer, ShopPhotoCreateSerializer,
 )
 
+from django.db.models import Avg, Count
 from rest_framework import generics, permissions
 from .models import Shop
 from .permissions import IsOwnerRole, IsShopOwner
 
 
+def with_rating(qs):
+    """Sartaroshxona reytingi: ustalarining bronlariga yozilgan sharhlar bo'yicha."""
+    return qs.annotate(
+        avg_rating=Avg('masters__bookings__review__rating'),
+        reviews_count=Count('masters__bookings__review'),
+    )
+
+
 class ShopListView(generics.ListAPIView):
-    queryset = Shop.objects.filter(is_approved=True, is_active=True)
+    queryset = with_rating(Shop.objects.filter(is_approved=True, is_active=True))
     serializer_class = ShopListSerializer
     permission_classes = [permissions.AllowAny]
     filter_backends = [SearchFilter]
@@ -26,7 +35,7 @@ class ShopListView(generics.ListAPIView):
 
 
 class ShopDetailView(generics.RetrieveAPIView):
-    queryset = Shop.objects.filter(is_approved=True, is_active=True).prefetch_related('photos')
+    queryset = with_rating(Shop.objects.filter(is_approved=True, is_active=True)).prefetch_related('photos')
     serializer_class = ShopDetailSerializer
     permission_classes = [permissions.AllowAny]
 

@@ -107,6 +107,12 @@ def collect_documents() -> list[dict]:
             text = f"[{d.shop.name}] {d.title}\n{chunk}"
             docs.append({"id": f"doc:{d.id}:{n}", "shop_id": d.shop_id, "source": "doc", "text": text})
 
+    from apps.faq.models import FAQItem  # lazy: faq app ixtiyoriy bog'liqlik
+
+    for f in FAQItem.objects.filter(is_active=True, shop__is_active=True).select_related("shop"):
+        text = f"[{f.shop.name}] Savol: {f.question}\nJavob: {f.answer}"
+        docs.append({"id": f"faq:{f.id}", "shop_id": f.shop_id, "source": "faq", "text": text})
+
     return docs
 
 

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Booking
+from .models import Booking, WaitlistEntry
 from .services import SHOP_TZ, master_name
 
 
@@ -14,7 +14,8 @@ class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = ("id", "shop", "master", "master_name", "service", "service_name",
-                  "start_time", "end_time", "price", "status", "created_at")
+                  "start_time", "end_time", "price", "discount_amount", "loyalty_applied",
+                  "certificate_amount", "status", "created_at")
         read_only_fields = fields
 
     def get_master_name(self, obj):
@@ -33,6 +34,33 @@ class BookingCreateSerializer(serializers.Serializer):
     service = serializers.IntegerField()
     date = serializers.DateField()
     start_time = serializers.TimeField(format="%H:%M", input_formats=["%H:%M"])
+    promo_code = serializers.CharField(required=False, allow_blank=True, default="")
+    certificate_code = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class RescheduleSerializer(serializers.Serializer):
+    date = serializers.DateField()
+    start_time = serializers.TimeField(format="%H:%M", input_formats=["%H:%M"])
+    master = serializers.IntegerField(required=False)
+
+
+class WaitlistCreateSerializer(serializers.Serializer):
+    service = serializers.IntegerField()
+    master = serializers.IntegerField(required=False, allow_null=True, default=None)
+    date = serializers.DateField()
+    from_time = serializers.TimeField(format="%H:%M", input_formats=["%H:%M"], required=False, allow_null=True)
+    to_time = serializers.TimeField(format="%H:%M", input_formats=["%H:%M"], required=False, allow_null=True)
+
+
+class WaitlistEntrySerializer(serializers.ModelSerializer):
+    service_name = serializers.CharField(source="service.name", read_only=True)
+    shop = serializers.CharField(source="service.shop.name", read_only=True)
+
+    class Meta:
+        model = WaitlistEntry
+        fields = ("id", "service", "service_name", "shop", "master", "date", "from_time", "to_time",
+                  "status", "created_at")
+        read_only_fields = fields
 
 
 class BookingStatusSerializer(serializers.Serializer):
@@ -43,4 +71,3 @@ class SlotQuerySerializer(serializers.Serializer):
     master = serializers.IntegerField()
     service = serializers.IntegerField()
     date = serializers.DateField()
-    

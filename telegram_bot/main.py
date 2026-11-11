@@ -12,10 +12,11 @@ import httpx
 from aiogram import Bot, Dispatcher, F
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandStart
-from aiogram.types import KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.types import InputMediaPhoto, KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 from .api import ApiError, BackendClient, NotLinked
 from .config import load_settings
+from .images import photos_for
 
 logger = logging.getLogger("telegram_bot")
 
@@ -194,6 +195,20 @@ def format_hairstyles(data: dict) -> str:
     return "\n".join(lines)
 
 
+async def send_hairstyle_photos(message: Message, names: list[str]) -> None:
+    """Tavsiya etilgan turmaklarning tayyor rasmlari (Pexels). Xato bo'lsa, jim o'tib ketadi: matn allaqachon yuborilgan."""
+    try:
+        photos = await photos_for(settings.pexels_api_key, names)
+        if len(photos) >= 2:
+            await message.answer_media_group(
+                [InputMediaPhoto(media=p["url"], caption=p["caption"]) for p in photos]
+            )
+        elif photos:
+            await message.answer_photo(photos[0]["url"], caption=photos[0]["caption"])
+    except TelegramAPIError:
+        logger.warning("hairstyle: rasmlarni yuborib bo'lmadi", exc_info=True)
+
+
 @dp.message(F.photo)
 async def on_photo(message: Message, bot: Bot) -> None:
     photo = message.photo[-1]  # eng katta o'lcham
@@ -232,6 +247,7 @@ async def on_photo(message: Message, bot: Bot) -> None:
             await message.answer("Xizmat vaqtincha ishlamayapti, keyinroq urinib ko'ring.")
             return
         await message.answer(format_hairstyles(data))
+        await send_hairstyle_photos(message, [h["name"] for h in data["hairstyles"]])
 
 
 @dp.message(F.text)

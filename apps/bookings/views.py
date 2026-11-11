@@ -10,15 +10,26 @@ from rest_framework.views import APIView
 # Bo'sh vaqt va bron yaratish mantig'i hozircha ai.services ichida (AI agent ham shuni ishlatadi)
 from apps.ai import services as availability
 
-from .models import Booking
+from . import waitlist
+from .models import Booking, WaitlistEntry
 from .permissions import IsOwnerOrMaster
 from .serializers import (
     BookingCreateSerializer,
     BookingSerializer,
     BookingStatusSerializer,
+    RescheduleSerializer,
     SlotQuerySerializer,
+    WaitlistCreateSerializer,
+    WaitlistEntrySerializer,
 )
-from .services import SHOP_TZ, BookingError, BookingForbidden, cancel_by_client, change_status
+from .services import (
+    SHOP_TZ,
+    BookingError,
+    BookingForbidden,
+    cancel_by_client,
+    change_status,
+    reschedule_by_client,
+)
 
 
 def _related(qs):
@@ -62,6 +73,8 @@ class BookingListCreateView(generics.ListCreateAPIView):
                 service_id=data["service"],
                 date=data["date"].isoformat(),
                 start_time=data["start_time"].strftime("%H:%M"),
+                promo_code=data["promo_code"],
+                certificate_code=data["certificate_code"],
             )
         except ObjectDoesNotExist:
             return Response({"detail": "Usta yoki xizmat topilmadi"}, status=status.HTTP_404_NOT_FOUND)
@@ -105,6 +118,69 @@ class BookingCancelView(APIView):
         return Response(booking)
 
 
+class BookingRescheduleView(APIView):
+    """Mijoz o'z bronini boshqa vaqtga ko'chiradi: {"date": "2026-11-12", "start_time": "15:00", "master": 3 (ixtiyoriy)}."""
+
+    def post(self, request, pk):
+        serializer = RescheduleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        try:
+            booking = reschedule_by_client(
+                request.user, pk, data["date"].isoformat(), data["start_time"].strftime("%H:%M"),
+                master_id=data.get("master"),
+            )
+        except BookingError as exc:
+            code = status.HTTP_404_NOT_FOUND if str(exc) in ("Bron topilmadi", "Usta topilmadi") \
+                else status.HTTP_400_BAD_REQUEST
+            return Response({"detail": str(exc)}, status=code)
+        return Response(booking)
+
+
+class WaitlistListCreateView(APIView):
+    """GET: mening faol kutish yozuvlarim. POST: kutish ro'yxatiga yozilish."""
+
+    def get(self, request):
+        entries = WaitlistEntry.objects.filter(
+            client=request.user, status__in=waitlist.ACTIVE
+        ).select_related("service__shop")
+        return Response(WaitlistEntrySerializer(entries, many=True).data)
+
+    def post(self, request):
+        serializer = WaitlistCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        from apps.masters.models import Master
+        from apps.services.models import Service
+
+        service = Service.objects.filter(pk=data["service"], is_active=True, shop__is_active=True).first()
+        if service is None:
+            return Response({"detail": "Xizmat topilmadi"}, status=status.HTTP_404_NOT_FOUND)
+        master = None
+        if data["master"]:
+            master = Master.objects.filter(pk=data["master"], is_active=True).first()
+            if master is None:
+                return Response({"detail": "Usta topilmadi"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            entry = waitlist.join(request.user, service, data["date"], master,
+                                  data.get("from_time"), data.get("to_time"))
+        except BookingError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        entry = WaitlistEntry.objects.select_related("service__shop").get(pk=entry.pk)
+        return Response(WaitlistEntrySerializer(entry).data, status=status.HTTP_201_CREATED)
+
+
+class WaitlistDetailView(APIView):
+    """DELETE: kutish ro'yxatidan chiqish."""
+
+    def delete(self, request, pk):
+        try:
+            waitlist.leave(request.user, pk)
+        except BookingError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class ShopBookingListView(generics.ListAPIView):
     """Egasi o'z sartaroshxonalaridagi, usta esa o'zining bronlarini ko'radi."""
 
@@ -133,4 +209,3 @@ class BookingStatusView(APIView):
             code = status.HTTP_404_NOT_FOUND if str(exc) == "Bron topilmadi" else status.HTTP_400_BAD_REQUEST
             return Response({"detail": str(exc)}, status=code)
         return Response(booking)
-    

@@ -12,20 +12,34 @@ class ShopPhotoSerializer(serializers.ModelSerializer):
         fields = ('id', 'image')
 
 
-class ShopListSerializer(serializers.ModelSerializer):
+class RatingMixin(serializers.Serializer):
+    """avg_rating / reviews_count: querysetda annotate qilingan bo'lsa ishlatiladi (shops.views.with_rating)."""
+    avg_rating = serializers.SerializerMethodField()
+    reviews_count = serializers.SerializerMethodField()
+
+    def get_avg_rating(self, obj):
+        value = getattr(obj, 'avg_rating', None)
+        return round(float(value), 1) if value is not None else None
+
+    def get_reviews_count(self, obj):
+        return getattr(obj, 'reviews_count', 0)
+
+
+class ShopListSerializer(RatingMixin, serializers.ModelSerializer):
     class Meta:
         model = Shop
-        fields = ('id', 'name', 'city', 'district', 'address', 'latitude', 'longitude', 'opens_at', 'closes_at')
+        fields = ('id', 'name', 'city', 'district', 'address', 'latitude', 'longitude', 'opens_at', 'closes_at',
+                  'avg_rating', 'reviews_count')
 
 
-class ShopDetailSerializer(serializers.ModelSerializer):
+class ShopDetailSerializer(RatingMixin, serializers.ModelSerializer):
     photos = ShopPhotoSerializer(many=True, read_only=True)
 
     class Meta:
         model = Shop
         fields = ('id', 'name', 'description', 'phone', 'city', 'district', 'address', 'latitude', 'longitude',
                   'opens_at',
-                  'closes_at', 'photos')
+                  'closes_at', 'photos', 'avg_rating', 'reviews_count')
 
 
 class ShopWriteSerializer(serializers.ModelSerializer):

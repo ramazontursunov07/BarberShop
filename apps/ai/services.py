@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 from django.db import transaction
 from django.utils import timezone
 
-from apps.bookings.models import Booking
+from apps.bookings.models import Booking, WaitlistEntry
 from apps.masters.models import DayOff, Master, WorkSchedule
 from apps.services.models import Service
 from apps.shops.models import Shop
@@ -22,6 +22,7 @@ from apps.shops.models import Shop
 from apps.bookings import services as booking_services
 
 from apps.insights import pricing
+from apps.promotions import services as promotions
 from apps.insights.profile import client_profile
 
 from .slots import PARTS_OF_DAY, compute_slots, rank_slots
@@ -111,7 +112,8 @@ def list_masters(user, shop_id: int | None = None) -> list[dict]:
     ]
 
 
-def _get_slots(master: Master, service: Service, day) -> list[str]:
+def _get_slots(master: Master, service: Service, day, exclude_booking_id: int | None = None) -> list[str]:
+    """exclude_booking_id: shu bronni band hisoblamaydi (bronni ko'chirishda o'z vaqti bilan to'qnashmasligi uchun)."""
     if master.shop_id != service.shop_id:
         raise ValueError("Bu xizmat tanlangan ustaning sartaroshxonasiga tegishli emas")
 
@@ -134,6 +136,8 @@ def _get_slots(master: Master, service: Service, day) -> list[str]:
         Booking.objects.filter(master=master, start_time__gte=day_start, start_time__lt=day_end)
         .exclude(status__in=FREE_STATUSES)
     )
+    if exclude_booking_id:
+        bookings = bookings.exclude(pk=exclude_booking_id)
     busy = [
         (b.start_time.astimezone(SHOP_TZ).time(), b.end_time.astimezone(SHOP_TZ).time())
         for b in bookings
@@ -225,8 +229,11 @@ def find_best_slots(
 
 # ------------------------------------------------------------------ yozish
 
-def create_booking(user, master_id: int, service_id: int, date: str, start_time: str) -> dict:
-    """Bron yaratadi. Mijoz HAR DOIM so'rov yuborgan foydalanuvchi (model emas!)."""
+def create_booking(user, master_id: int, service_id: int, date: str, start_time: str,
+                   promo_code: str = "", certificate_code: str = "") -> dict:
+    """Bron yaratadi. Mijoz HAR DOIM so'rov yuborgan foydalanuvchi (model emas!).
+
+    promo_code / certificate_code ixtiyoriy; noto'g'ri bo'lsa bron YARATILMAYDI va xato qaytadi."""
     if user.blocked_until and user.blocked_until > timezone.now():
         return {"error": "Sizning hisobingiz vaqtincha bloklangan, bron qilib bo'lmaydi."}
 
@@ -244,30 +251,49 @@ def create_booking(user, master_id: int, service_id: int, date: str, start_time:
 
         start_dt = datetime.combine(day, start, tzinfo=SHOP_TZ)
         end_dt = start_dt + timedelta(minutes=service.duration_minutes)
-        discount = pricing.discount_percent(service.shop_id, start_dt)
-        final_price = pricing.apply_discount(service.price, discount)
+        try:
+            quote = promotions.quote(user, service, start_dt, promo_code, certificate_code, lock=True)
+        except promotions.PromotionError as exc:
+            return {"error": str(exc)}
         booking = Booking.objects.create(
             client=user,
             master=master,
             service=service,
             start_time=start_dt,
             end_time=end_dt,
-            price=final_price,
+            price=quote.final_price,
             status=Booking.Status.PENDING,
+            discount_amount=quote.discount_amount,
+            promo_code=quote.promo,
+            loyalty_applied=quote.loyalty_applied,
+            certificate=quote.certificate,
+            certificate_amount=quote.certificate_amount,
         )
+        # Kutish ro'yxatida turgan bo'lsa, endi bron qilingan
+        WaitlistEntry.objects.filter(
+            client=user, service=service, date=day,
+            status__in=[WaitlistEntry.Status.WAITING, WaitlistEntry.Status.NOTIFIED],
+        ).update(status=WaitlistEntry.Status.BOOKED)
 
     return {
         "booking_id": booking.id,
         "shop": master.shop.name,
         "master": _master_name(master),
         "service": service.name,
-        "price": final_price,
-        "discount_percent": discount,
+        "price": quote.final_price,
+        "base_price": quote.base_price,
+        "discount_percent": quote.discount_percent,
+        "discount_kind": quote.discount_kind,
+        "promo_code": quote.promo.code if quote.promo else None,
+        "loyalty_applied": quote.loyalty_applied,
+        "certificate_amount": quote.certificate_amount,
+        "notes": quote.notes,
         "date": date,
         "start_time": start_time,
         "end_time": end_dt.strftime("%H:%M"),
         "status": "pending",
     }
+
 
 def my_recommendations(user) -> dict:
     """Mijoz tarixiga asoslangan tavsiya: sevimli usta/xizmat, oxirgi tashrif."""

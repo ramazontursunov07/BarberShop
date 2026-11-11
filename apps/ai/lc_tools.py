@@ -37,14 +37,17 @@ def make_tools(user):
         )
 
     @tool
-    def create_booking(master_id: int, service_id: int, date: str, start_time: str) -> str:
+    def create_booking(master_id: int, service_id: int, date: str, start_time: str,
+                       promo_code: str = "", certificate_code: str = "") -> str:
         """Bron yaratadi. FAQAT mijoz usta, xizmat, sana va vaqtni aniq tasdiqlagandan KEYIN chaqir.
-        date: YYYY-MM-DD, start_time: HH:MM."""
-        return _dump(
-            run_tool("create_booking", user,
-                     {"master_id": master_id, "service_id": service_id,
-                      "date": date, "start_time": start_time})
-        )
+        date: YYYY-MM-DD, start_time: HH:MM. promo_code va certificate_code FAQAT mijoz o'zi aytgan bo'lsa
+        yuboriladi (kodni o'ylab topma). Sodiqlik chegirmasi avtomatik qo'llanadi; natijadagi price yakuniy narx."""
+        args = {"master_id": master_id, "service_id": service_id, "date": date, "start_time": start_time}
+        if promo_code:
+            args["promo_code"] = promo_code
+        if certificate_code:
+            args["certificate_code"] = certificate_code
+        return _dump(run_tool("create_booking", user, args))
 
     @tool
     def find_best_slots(service_id: int, date: str, master_id: int = 0,
