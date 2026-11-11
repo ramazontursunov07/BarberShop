@@ -10,16 +10,21 @@ class BookingSerializer(serializers.ModelSerializer):
     service_name = serializers.CharField(source="service.name", read_only=True)
     start_time = serializers.SerializerMethodField()
     end_time = serializers.SerializerMethodField()
+    client_name = serializers.SerializerMethodField()
+    client_phone = serializers.CharField(source="client.phone", read_only=True)
 
     class Meta:
         model = Booking
-        fields = ("id", "shop", "master", "master_name", "service", "service_name",
+        fields = ("id", "shop", "client_name", "client_phone", "master", "master_name", "service", "service_name",
                   "start_time", "end_time", "price", "discount_amount", "loyalty_applied",
                   "certificate_amount", "status", "created_at")
         read_only_fields = fields
 
     def get_master_name(self, obj):
         return master_name(obj.master)
+
+    def get_client_name(self, obj):
+        return f"{obj.client.first_name} {obj.client.last_name}".strip()
 
     # Vaqtlarni sartaroshxona vaqt mintaqasida (Asia/Tashkent) qaytaramiz
     def get_start_time(self, obj):

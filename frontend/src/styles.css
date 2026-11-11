@@ -71,3 +71,33 @@ p { margin: .25rem 0; }
 .badge.pending, .badge.confirmed { color: var(--accent); border-color: var(--accent); }
 .badge.completed { color: var(--ok); border-color: var(--ok); }
 .badge.no_show, .badge.cancelled { color: var(--danger); border-color: var(--danger); }
+
+/* --- Qo'shimchalar: til tanlash, tablar, statistika, panel --- */
+.lang { width: auto; padding: .3rem .4rem; border-radius: 8px; font-size: .85rem; }
+.row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin: .5rem 0; }
+.row .search { margin: 0; }
+.grow { flex: 1; min-width: 120px; }
+.btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: .4rem .8rem; margin-top: 0; }
+.btn.danger { margin-top: 0; }
+.option.plain { background: none; border: 0; padding: 0; color: inherit; }
+.panel { border-top: 1px solid var(--line); margin-top: .8rem; padding-top: .8rem; }
+.stars { color: var(--accent); letter-spacing: 2px; }
+.stars.big { margin: .5rem 0; }
+.star { background: none; border: 0; color: var(--accent); font-size: 1.8rem; cursor: pointer; padding: 0 .1rem; }
+textarea.search { resize: vertical; }
+details summary { cursor: pointer; font-weight: 600; }
+.tabs { display: flex; gap: .4rem; margin: .8rem 0; overflow-x: auto; }
+.tab {
+  padding: .5rem 1rem; border-radius: 999px; border: 1px solid var(--line); background: var(--card);
+  color: var(--text); font: inherit; cursor: pointer; white-space: nowrap;
+}
+.tab.active { background: var(--accent); color: #1a1405; border-color: var(--accent); font-weight: 600; }
+.tabs.small .tab { padding: .3rem .8rem; font-size: .85rem; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .6rem; }
+.stat { display: flex; flex-direction: column; gap: .2rem; }
+.stat small { color: var(--muted); }
+.stat strong { font-size: 1.15rem; }
+.bars { display: grid; gap: .6rem; }
+.bar-head { display: flex; justify-content: space-between; gap: 1rem; font-size: .9rem; }
+.bar { height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; margin-top: .25rem; }
+.bar > div { height: 100%; background: var(--accent); border-radius: 999px; }

@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
+import { useI18n } from "../i18n.jsx";
 
 export default function Login() {
   const { user, login, register } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = location.state?.from || "/";
@@ -26,47 +28,56 @@ export default function Login() {
       else await register(form);
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      setError(err.status === 401 ? "Telefon raqam yoki parol noto'g'ri" : err.message);
+      setError(err.status === 401 ? t("login.bad") : err.message);
     } finally {
       setBusy(false);
     }
   };
 
+  const isLogin = mode === "login";
+
   return (
     <form className="card form" onSubmit={submit}>
-      <h2>{mode === "login" ? "Kirish" : "Ro'yxatdan o'tish"}</h2>
+      <h2>{isLogin ? t("login.title") : t("register.title")}</h2>
 
       <label>
-        Telefon raqam
+        {t("phone")}
         <input value={form.phone} onChange={set("phone")} placeholder="+998901234567" inputMode="tel" required />
       </label>
 
-      {mode === "register" && (
+      {!isLogin && (
         <>
           <label>
-            Ism
+            {t("first_name")}
             <input value={form.first_name} onChange={set("first_name")} maxLength={20} required />
           </label>
           <label>
-            Familiya
+            {t("last_name")}
             <input value={form.last_name} onChange={set("last_name")} maxLength={20} />
           </label>
         </>
       )}
 
       <label>
-        Parol
-        <input type="password" value={form.password} onChange={set("password")} minLength={mode === "register" ? 8 : 1} required />
+        {t("password")}
+        <input type="password" value={form.password} onChange={set("password")} minLength={isLogin ? 1 : 8} required />
       </label>
 
       {error && <p className="error">{error}</p>}
 
       <button className="btn" disabled={busy}>
-        {busy ? "Kuting..." : mode === "login" ? "Kirish" : "Ro'yxatdan o'tish"}
+        {busy ? t("wait") : isLogin ? t("login.submit") : t("register.submit")}
       </button>
 
-      <button type="button" className="link" onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}>
-        {mode === "login" ? "Akkauntingiz yo'qmi? Ro'yxatdan o'ting" : "Akkauntingiz bormi? Kiring"}
+      <button
+        type="button"
+        className="link"
+        onClick={() => {
+          setMode(isLogin ? "register" : "login");
+          setError("");
+        }}
+      >
+        {isLogin ? t("login.to_register") : t("login.to_login")}
       </button>
     </form>
   );

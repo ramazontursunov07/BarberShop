@@ -1,8 +1,13 @@
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
+import { useI18n } from "../i18n.jsx";
+import { LANG_LIST } from "../locales.js";
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
+  const { t, lang, setLang } = useI18n();
+  const isStaff = user && (user.role === "owner" || user.role === "master");
+
   return (
     <>
       <header className="header">
@@ -11,16 +16,24 @@ export default function Layout({ children }) {
         </Link>
         <nav className="nav">
           <NavLink to="/" end>
-            Sartaroshxonalar
+            {t("nav.shops")}
           </NavLink>
-          {user && <NavLink to="/bookings">Bronlarim</NavLink>}
+          {user && <NavLink to="/bookings">{t("nav.bookings")}</NavLink>}
+          {isStaff && <NavLink to="/panel">{t("nav.panel")}</NavLink>}
           {user ? (
             <button className="link" onClick={logout}>
-              Chiqish
+              {t("nav.logout")}
             </button>
           ) : (
-            <NavLink to="/login">Kirish</NavLink>
+            <NavLink to="/login">{t("nav.login")}</NavLink>
           )}
+          <select className="lang" value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Language">
+            {LANG_LIST.map((l) => (
+              <option key={l} value={l}>
+                {l.toUpperCase()}
+              </option>
+            ))}
+          </select>
         </nav>
       </header>
       <main className="container">{children}</main>

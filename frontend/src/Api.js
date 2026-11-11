@@ -91,3 +91,15 @@ export async function api(path, { method = "GET", body, query, auth = true, retr
 
 // DRF ro'yxatlari sahifalangan ({results: [...]}) yoki oddiy massiv bo'lishi mumkin.
 export const results = (data) => (Array.isArray(data) ? data : data?.results ?? []);
+
+// Sahifalangan ro'yxatning hamma sahifasini o'qiydi (?page=1,2,...).
+export async function fetchAll(path, query = {}, maxPages = 10) {
+  const out = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const data = await api(path, { query: { ...query, page } });
+    if (Array.isArray(data)) return data;
+    out.push(...(data?.results ?? []));
+    if (!data?.next) break;
+  }
+  return out;
+}

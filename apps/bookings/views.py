@@ -33,7 +33,7 @@ from .services import (
 
 
 def _related(qs):
-    return qs.select_related("master__user", "master__shop", "service")
+    return qs.select_related("client", "master__user", "master__shop", "service")
 
 
 def _filter_by_params(qs, params):

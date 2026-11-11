@@ -32,6 +32,7 @@ class ReviewCreateSerializer(serializers.ModelSerializer):
 
 class ReviewSerializer(serializers.ModelSerializer):
     """Ochiq ko'rinish: mijozning faqat ismi chiqadi, telefon raqami hech qachon."""
+    booking = serializers.IntegerField(source="booking_id", read_only=True)
     client_name = serializers.CharField(source="client.first_name", read_only=True)
     service = serializers.CharField(source="booking.service.name", read_only=True)
     shop = serializers.CharField(source="booking.master.shop.name", read_only=True)
@@ -40,7 +41,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = ("id", "rating", "comment", "client_name", "service", "shop", "master", "master_name", "created_at")
+        fields = ("id", "booking", "rating", "comment", "client_name", "service", "shop", "master", "master_name", "created_at")
         read_only_fields = fields
 
     def get_master_name(self, obj):
