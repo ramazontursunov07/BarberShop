@@ -105,6 +105,21 @@ python manage.py eval_agent                     # hammasi, hisobot: eval_reports
 
 Egasi API'lari faqat o'z sartaroshxonasi uchun ishlaydi (`owner` roli).
 
+## Bron va daromad imkoniyatlari
+
+- **Bronni ko'chirish**: `POST /api/bookings/<id>/reschedule/`. Bekor qilish bilan bir xil qoida (kamida 2 soat oldin), narx o'zgarmaydi.
+- **Kutish ro'yxati** (`/api/bookings/waitlist/`): vaqt band bo'lsa mijoz kun va (ixtiyoriy) soat oralig'i bilan yoziladi.
+  Bron bekor qilinsa yoki ko'chirilsa, mos kelgan mijozlarga Telegram'da xabar boradi (navbat bo'yicha, eng ko'pi bilan 5 ta).
+- **Sodiqlik** (`apps/promotions`): egasi "har N ta tashrifdan keyin X% chegirma" belgilaydi. Mukofot avtomatik qo'llanadi.
+- **Promokod**: foiz yoki summa, muddat, limit, "faqat birinchi marta kelganlarga", ochiq aksiya (`is_public`).
+- **Sovg'a sertifikati**: egasi beradi, kod avtomatik (`GC-XXXX-XXXX`), mijoz bronda ishlatadi, qoldiq saqlanadi.
+- **Chegirma qoidasi**: dinamik narx, sodiqlik va promokod QO'SHILMAYDI (mijozga eng foydalisi qo'llanadi);
+  sertifikat pul hisoblanadi va chegirmadan keyingi summadan yechiladi. Bron bekor qilinsa hammasi qaytadi.
+  `POST /api/promotions/quote/` bron yaratmasdan narxni ko'rsatadi.
+- **Mahsulotlar** (`apps/products`): katalog, mijoz band qiladi va sartaroshxonadan olib ketadi (onlayn to'lov yo'q).
+- **FAQ** (`apps/faq`): egasi savol-javob yozadi, mijoz ro'yxatni ko'radi, AI agent ham shundan javob beradi (`index_knowledge` ni qayta ishga tushiring).
+- **Reyting**: sartaroshxona va usta ro'yxatida `avg_rating` va `reviews_count`.
+
 ## Telegram bot
 
 Mijoz botga yozadi, gap `/api/ai/chat/` ga uzatiladi. Birinchi marta o'z kontaktini yuboradi (Telegram telefonni tasdiqlaydi),
@@ -137,6 +152,7 @@ pip install -r requirements.txt
 
 copy .env.example .env            # Linux/macOS: cp .env.example .env  (va to'ldiring)
 
+python manage.py makemigrations
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py seed_demo        # demo sartaroshxona, ustalar, xizmatlar, qoidalar, sharhlar
@@ -157,6 +173,7 @@ Demo ma'lumot, sartaroshxona yoki sharh o'zgargach `index_knowledge` ni qayta is
 | `AI_ENGINE` | `graph` (LangGraph, standart) yoki `simple` (qo'lda yozilgan sikl) |
 | `TELEGRAM_BOT_TOKEN` | @BotFather bergan token |
 | `TELEGRAM_BOT_SECRET` | Bot va Django uchun bir xil maxfiy qator |
+| `PEXELS_API_KEY` | Ixtiyoriy: selfi tavsiyasida soch turmagi rasmlari (pexels.com/api, bepul) |
 | `API_BASE_URL` | Bot chaqiradigan API manzili |
 
 ## API
@@ -172,6 +189,12 @@ Demo ma'lumot, sartaroshxona yoki sharh o'zgargach `index_knowledge` ni qayta is
 | `GET /api/bookings/slots/` | Bo'sh vaqtlar |
 | `GET, POST /api/bookings/`, `POST /api/bookings/<id>/cancel/` | Mijozning bronlari |
 | `GET /api/bookings/shop/`, `PATCH /api/bookings/<id>/status/` | Egasi va usta uchun |
+| `POST /api/bookings/<id>/reschedule/` | Bronni ko'chirish |
+| `GET, POST /api/bookings/waitlist/`, `DELETE .../waitlist/<id>/` | Kutish ro'yxati |
+| `POST /api/promotions/quote/`, `GET .../loyalty/?shop=`, `GET .../offers/?shop=`, `GET .../certificates/check/?code=` | Narx hisobi, sodiqlik, aksiyalar, sertifikat qoldig'i |
+| `/api/promotions/my/promo-codes/`, `.../my/certificates/`, `PUT .../my/loyalty/` | Egasi: promokod, sertifikat, sodiqlik |
+| `GET /api/products/?shop=`, `/api/products/reservations/...`, `/api/products/my/...` | Mahsulotlar va band qilish |
+| `GET /api/faq/?shop=`, `/api/faq/my/...` | Tez-tez so'raladigan savollar |
 | `GET, POST /api/reviews/` | Sharhlar |
 | `POST /api/ai/chat/` | AI yordamchi: `{"message": "...", "history": [...]}` (JWT kerak) |
 
@@ -194,6 +217,9 @@ apps/
   services/   xizmatlar
   bookings/   bronlar va holatlar
   reviews/    sharhlar
+  promotions/ sodiqlik, promokod, sovg'a sertifikati, narx hisobi
+  products/   mahsulot katalogi va band qilish
+  faq/        tez-tez so'raladigan savollar
   ai/         agent, tool'lar, RAG, baholash
     graph.py, lc_tools.py    LangGraph grafi va LangChain tool'lari
     services.py, slots.py    tool'lar ortidagi biznes mantiq
