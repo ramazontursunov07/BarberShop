@@ -93,6 +93,18 @@ python manage.py eval_agent                     # hammasi, hisobot: eval_reports
 |---|---|---|---|
 | `gemini-3.5-flash` | 30 | — | — |
 
+## Insights (`apps/insights`)
+
+- **Dinamik narx**: egasi admin panelda `PricingRule` yaratadi (masalan, ish kunlari 10:00-13:00 -20%). `find_best_slots` va
+  `create_booking` chegirmali narxni qaytaradi va yozadi, shuning uchun mijozga aytilgan narx bilan bron narxi bir xil.
+- **No-show xavfi**: mijoz tarixi (Bayes silliqlash), bron muddati va soat/kun bo'yicha umumiy kelmaslik ulushidan ehtimol.
+  `GET /api/insights/risky-bookings/?shop=<id>`: kelgusi bronlar xavf bo'yicha.
+- **Talab prognozi**: `GET /api/insights/demand/?shop=<id>&weeks=8`: kun/soat bo'yicha kerakli ustalar soni,
+  "shanba kuni 14:00-17:00 da 3 ta usta kerak" va chegirma uchun bo'sh soatlar tavsiyasi.
+- **Shaxsiy tavsiya**: AI tool `my_recommendations`: oxirgi usta/xizmat, sevimli usta. "O'tgan safar fade qildirgansiz, shu ustaga yana yozilamizmi?"
+
+Egasi API'lari faqat o'z sartaroshxonasi uchun ishlaydi (`owner` roli).
+
 ## Telegram bot
 
 Mijoz botga yozadi, gap `/api/ai/chat/` ga uzatiladi. Birinchi marta o'z kontaktini yuboradi (Telegram telefonni tasdiqlaydi),
@@ -194,4 +206,5 @@ telegram_bot/  Telegram bot (aiogram)
 
 - SQLite'da bir vaqtda ikki so'rov bitta vaqtni olishi mumkin; production uchun PostgreSQL va Docker rejalashtirilgan.
 - Bepul LLM rejalarida so'rovlar soni cheklangan; baholashda `--sleep` va `--limit` ishlatiladi.
-- Ovozli xabar, no-show prognozi, talab prognozi, sharhlar tahlili va eslatma xabarlari hali yozilmagan.
+- No-show modeli hozircha statistik (tushunarli omillar); ma'lumot to'planganda sklearn GradientBoosting bilan almashtiriladi.
+- Selfi orqali soch turmagi tavsiyasi (Computer Vision) hali yozilmagan.
