@@ -22,6 +22,7 @@ logger = logging.getLogger("telegram_bot")
 HISTORY_LEN = 20  # API ham oxirgi 20 xabarni qabul qiladi
 MAX_VOICE_SECONDS = 60
 MAX_VOICE_BYTES = 2 * 1024 * 1024  # serverdagi chegara bilan bir xil
+MAX_PHOTO_BYTES = 4 * 1024 * 1024  # serverdagi chegara bilan bir xil
 
 settings = load_settings()
 backend = BackendClient(settings.api_base_url, settings.bot_secret)
@@ -40,7 +41,8 @@ CONTACT_KEYBOARD = ReplyKeyboardMarkup(
 WELCOME = (
     "Salom! Men sartaroshxona bron yordamchisiman.\n"
     "Oddiy gapiring, masalan: «Ertaga kechqurun soch olish kerak, Jasur akaga». "
-    "Ovozli xabar ham yuborishingiz mumkin 🎤\n\n"
+    "Ovozli xabar ham yuborishingiz mumkin 🎤\n"
+    "Selfi yuborsangiz, yuz shakliga mos soch turmagini tavsiya qilaman 📸\n\n"
     "/reset: suhbatni yangidan boshlash"
 )
 ASK_CONTACT = "Boshlash uchun pastdagi tugma orqali telefon raqamingizni yuboring."
@@ -178,6 +180,58 @@ async def on_voice(message: Message, bot: Bot) -> None:
         # Tanilgan matnni ko'rsatamiz: noto'g'ri tanilsa, mijoz darhol sezadi va to'g'rilaydi
         await message.answer(f"🎤 Eshitdim: «{text}»")
         await chat_round(message, bot, user_id, token, text)
+
+
+def format_hairstyles(data: dict) -> str:
+    lines = [f"📸 Yuz shakli: {data['face_shape_name']}", "", "Sizga mos turmaklar:"]
+    lines += [f"• {h['name']}: {h['why']}" for h in data["hairstyles"]]
+    if data.get("avoid"):
+        lines += ["", "Tavsiya etilmaydi: " + "; ".join(data["avoid"])]
+    if data.get("note"):
+        lines += ["", data["note"]]
+    lines += ["", "Bu umumiy tavsiya, yakuniy qarorni usta bilan maslahatlashing. "
+                  "Yozilmoqchi bo'lsangiz, masalan: «Ertaga kechqurun soch olish»."]
+    return "\n".join(lines)
+
+
+@dp.message(F.photo)
+async def on_photo(message: Message, bot: Bot) -> None:
+    photo = message.photo[-1]  # eng katta o'lcham
+    if (photo.file_size or 0) > MAX_PHOTO_BYTES:
+        await message.answer("Rasm juda katta. Kichikroq selfi yuboring.")
+        return
+
+    user_id = message.from_user.id
+    async with locks[user_id]:
+        token = await get_token_or_prompt(message)
+        if token is None:
+            return
+
+        await bot.send_chat_action(message.chat.id, "typing")
+        buffer = io.BytesIO()
+        try:
+            await bot.download(photo, destination=buffer)
+        except TelegramAPIError:
+            logger.exception("photo: faylni yuklab bo'lmadi")
+            await message.answer("Rasmni olib bo'lmadi, qayta yuboring.")
+            return
+
+        try:
+            data = await backend.face_shape(token, buffer.getvalue())
+        except ApiError as exc:
+            if exc.status in (400, 413, 422):
+                await message.answer(exc.detail)
+            elif exc.status == 429:
+                await message.answer("Hozir juda ko'p so'rov bor, birozdan keyin qayta yuboring.")
+            else:
+                logger.error("photo: backend xatosi %s", exc)
+                await message.answer("Rasmni tahlil qilib bo'lmadi, keyinroq urinib ko'ring.")
+            return
+        except httpx.HTTPError:
+            logger.exception("photo: backendga ulanib bo'lmadi")
+            await message.answer("Xizmat vaqtincha ishlamayapti, keyinroq urinib ko'ring.")
+            return
+        await message.answer(format_hairstyles(data))
 
 
 @dp.message(F.text)

@@ -1,12 +1,20 @@
+import logging
+
 from django.shortcuts import get_object_or_404
+from openai import OpenAIError, RateLimitError
+from rest_framework import status
 from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from apps.shops.models import Shop
 from apps.shops.permissions import IsOwnerRole
 
 from .demand import demand_forecast
+from .hairstyle import MAX_UPLOAD_BYTES, InvalidImage, NoFaceDetected, recommend_from_selfie
 from .noshow import upcoming_risky
 
 
@@ -32,4 +40,40 @@ class DemandView(_OwnerShopView):
 class RiskyBookingsView(_OwnerShopView):
     def get(self, request):
         return Response({"bookings": upcoming_risky(self.get_shop(request))})
-    
+
+
+logger = logging.getLogger(__name__)
+
+
+class HairstyleThrottle(UserRateThrottle):
+    scope = "ai_hairstyle"
+    rate = "6/min"  # vision so'rovi qimmat
+
+
+class HairstyleView(APIView):
+    """Selfi bo'yicha yuz shakli va mos soch turmaklari: POST multipart, maydon `photo`. Rasm saqlanmaydi."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [HairstyleThrottle]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        photo = request.FILES.get("photo")
+        if photo is None or photo.size == 0:
+            return Response({"detail": "photo fayli majburiy"}, status=status.HTTP_400_BAD_REQUEST)
+        if photo.size > MAX_UPLOAD_BYTES:
+            return Response({"detail": "Rasm juda katta"}, status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
+        try:
+            return Response(recommend_from_selfie(photo.read()))
+        except InvalidImage as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except NoFaceDetected as exc:
+            return Response({"detail": f"{exc}. Yuzingiz aniq ko'ringan selfi yuboring."},
+                            status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        except RateLimitError:
+            logger.warning("Vision limiti tugadi")
+            return Response({"detail": "AI limiti tugadi, keyinroq urinib ko'ring"},
+                            status=status.HTTP_429_TOO_MANY_REQUESTS)
+        except OpenAIError as exc:
+            logger.error("Vision provayderi xatosi: %s", getattr(exc, "message", exc))
+            return Response({"detail": "Rasmni tahlil qilib bo'lmadi"}, status=status.HTTP_502_BAD_GATEWAY)

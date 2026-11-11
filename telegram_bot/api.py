@@ -68,5 +68,15 @@ class BackendClient:
             raise ApiError(resp.status_code, _detail(resp))
         return resp.json()["text"]
 
+    async def face_shape(self, token: str, photo: bytes) -> dict:
+        resp = await self._http.post(
+            "/api/insights/hairstyle/",
+            files={"photo": ("selfie.jpg", photo, "image/jpeg")},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        if resp.status_code != 200:
+            raise ApiError(resp.status_code, _detail(resp))
+        return resp.json()
+
     async def close(self) -> None:
         await self._http.aclose()

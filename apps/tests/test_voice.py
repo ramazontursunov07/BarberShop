@@ -36,7 +36,9 @@ class SpeechTests(SimpleTestCase):
 
     def test_transcribe_cleans_text_and_sends_hint(self):
         client, create = fake_stt("  Ertaga   soch\nolish  ")
-        with mock.patch.object(speech, "get_stt_client", return_value=client):
+        # .env dagi STT_LANGUAGE testga ta'sir qilmasin
+        with mock.patch.object(speech, "get_stt_client", return_value=client), \
+                mock.patch.dict(os.environ, {"STT_LANGUAGE": ""}), override_settings(STT_LANGUAGE=""):
             self.assertEqual(transcribe(b"audio", "x.ogg"), "Ertaga soch olish")
         kwargs = create.call_args.kwargs
         self.assertEqual(kwargs["file"], ("voice.ogg", b"audio"))

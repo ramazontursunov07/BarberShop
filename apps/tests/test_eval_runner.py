@@ -28,7 +28,7 @@ class EvalHelpersTests(SimpleTestCase):
             self.assertTrue(day <= result < day + timedelta(days=7))
 
     def test_fixed_today_changes_the_prompt_date(self):
-        from .. import graph
+        from apps.ai import graph
 
         with fixed_today(date(2030, 1, 7)):
             self.assertIn("2030-01-07", graph._booking_prompt())

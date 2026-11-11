@@ -25,6 +25,7 @@ class Notification(models.Model):
     class Kind(models.TextChoices):
         REMINDER = "reminder", "Bron eslatmasi"
         WINBACK = "winback", "Mijozni qaytarish"
+        RISK_REMINDER = "risk24h", "Xavfli bron: erta eslatma"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")
     booking = models.ForeignKey("bookings.Booking", null=True, blank=True, on_delete=models.CASCADE,
@@ -43,4 +44,3 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.kind} -> {self.user_id}"
-    
