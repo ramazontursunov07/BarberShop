@@ -1,5 +1,6 @@
 import logging
 
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from openai import OpenAIError, RateLimitError
 from rest_framework import status
@@ -13,9 +14,11 @@ from rest_framework.views import APIView
 from apps.shops.models import Shop
 from apps.shops.permissions import IsOwnerRole
 
+from .clients import client_detail, shop_clients
 from .demand import demand_forecast
 from .hairstyle import MAX_UPLOAD_BYTES, InvalidImage, NoFaceDetected, recommend_from_selfie
 from .noshow import upcoming_risky
+from .stats import shop_stats
 
 
 class _OwnerShopView(APIView):
@@ -40,6 +43,38 @@ class DemandView(_OwnerShopView):
 class RiskyBookingsView(_OwnerShopView):
     def get(self, request):
         return Response({"bookings": upcoming_risky(self.get_shop(request))})
+
+
+class StatsView(_OwnerShopView):
+    """GET /api/insights/stats/?shop=<id>&days=30: daromad, eng ko'p so'ralgan xizmat, band soatlar."""
+
+    def get(self, request):
+        shop = self.get_shop(request)
+        days = request.query_params.get("days", "30")
+        return Response(shop_stats(shop, days=int(days) if days.isdigit() else 30))
+
+
+class ClientsView(_OwnerShopView):
+    """GET /api/insights/clients/?shop=<id>&search=<ism yoki telefon>&ordering=last_visit|visits|spent|no_shows"""
+
+    def get(self, request):
+        shop = self.get_shop(request)
+        clients = shop_clients(
+            shop,
+            search=request.query_params.get("search", ""),
+            ordering=request.query_params.get("ordering", "last_visit"),
+        )
+        return Response({"count": len(clients), "clients": clients})
+
+
+class ClientDetailView(_OwnerShopView):
+    """GET /api/insights/clients/<id>/?shop=<id>: mijozning tashrif tarixi."""
+
+    def get(self, request, client_id: int):
+        data = client_detail(self.get_shop(request), client_id)
+        if data is None:
+            raise Http404
+        return Response(data)
 
 
 logger = logging.getLogger(__name__)
