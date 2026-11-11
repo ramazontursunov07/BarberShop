@@ -30,6 +30,7 @@ const uz = {
   "status.no_show": "Kelmadi", "status.cancelled": "Bekor qilingan",
 
   "own.title": "Boshqaruv paneli", "own.tab_today": "Bronlar", "own.tab_stats": "Statistika", "own.tab_clients": "Mijozlar",
+  "own.tab_manage": "Sozlamalar", "mg.services": "Xizmatlar va narxlar", "mg.price": "Narxi", "mg.save": "Saqlash", "mg.saved": "Saqlandi ✓", "mg.hide": "Yashirish", "mg.show": "Qaytarish", "mg.add_service": "Yangi xizmat", "mg.name": "Nomi", "mg.add": "Qo'shish", "mg.schedule": "Ustalar ish jadvali", "mg.day_off": "Dam olish", "mg.question": "Savol", "mg.answer": "Javob", "mg.delete": "O'chirish", "mg.delete_confirm": "O'chirasizmi?", "mg.faq_hint": "FAQ o'zgargach AI yordamchi uchun index_knowledge ni qayta ishga tushiring.", "mg.gallery": "Galereya", "mg.upload": "Rasm yuklash",
   "own.no_shops": "Sartaroshxonangiz yo'q. Avval Django admin yoki API orqali yarating.", "own.no_bookings": "Bu kunga bronlar yo'q.",
   "own.total": "Jami", "own.last_days": "Oxirgi {n} kun",
   "own.act.confirmed": "Tasdiqlash", "own.act.completed": "Bajarildi", "own.act.no_show": "Kelmadi", "own.act.cancelled": "Bekor qilish",
@@ -76,6 +77,7 @@ const ru = {
   "status.no_show": "Не пришёл", "status.cancelled": "Отменена",
 
   "own.title": "Панель управления", "own.tab_today": "Записи", "own.tab_stats": "Статистика", "own.tab_clients": "Клиенты",
+  "own.tab_manage": "Настройки", "mg.services": "Услуги и цены", "mg.price": "Цена", "mg.save": "Сохранить", "mg.saved": "Сохранено ✓", "mg.hide": "Скрыть", "mg.show": "Вернуть", "mg.add_service": "Новая услуга", "mg.name": "Название", "mg.add": "Добавить", "mg.schedule": "График мастеров", "mg.day_off": "Выходной", "mg.question": "Вопрос", "mg.answer": "Ответ", "mg.delete": "Удалить", "mg.delete_confirm": "Удалить?", "mg.faq_hint": "После изменения FAQ запустите index_knowledge для AI-помощника.", "mg.gallery": "Галерея", "mg.upload": "Загрузить фото",
   "own.no_shops": "У вас нет барбершопа. Сначала создайте его через Django admin или API.", "own.no_bookings": "На этот день записей нет.",
   "own.total": "Всего", "own.last_days": "Последние {n} дн.",
   "own.act.confirmed": "Подтвердить", "own.act.completed": "Выполнено", "own.act.no_show": "Не пришёл", "own.act.cancelled": "Отменить",
@@ -122,6 +124,7 @@ const en = {
   "status.no_show": "No-show", "status.cancelled": "Cancelled",
 
   "own.title": "Dashboard", "own.tab_today": "Bookings", "own.tab_stats": "Statistics", "own.tab_clients": "Clients",
+  "own.tab_manage": "Settings", "mg.services": "Services & prices", "mg.price": "Price", "mg.save": "Save", "mg.saved": "Saved ✓", "mg.hide": "Hide", "mg.show": "Restore", "mg.add_service": "New service", "mg.name": "Name", "mg.add": "Add", "mg.schedule": "Barber schedules", "mg.day_off": "Day off", "mg.question": "Question", "mg.answer": "Answer", "mg.delete": "Delete", "mg.delete_confirm": "Delete?", "mg.faq_hint": "After changing the FAQ, re-run index_knowledge for the AI assistant.", "mg.gallery": "Gallery", "mg.upload": "Upload photo",
   "own.no_shops": "You have no barbershop yet. Create one via Django admin or the API first.", "own.no_bookings": "No bookings for this day.",
   "own.total": "Total", "own.last_days": "Last {n} days",
   "own.act.confirmed": "Confirm", "own.act.completed": "Done", "own.act.no_show": "No-show", "own.act.cancelled": "Cancel",

@@ -5,6 +5,7 @@ import { useI18n } from "../../i18n.jsx";
 import BookingsTab from "./BookingsTab.jsx";
 import StatsTab from "./StatsTab.jsx";
 import ClientsTab from "./ClientsTab.jsx";
+import ManageTab from "./ManageTab.jsx";
 
 export default function OwnerPanel() {
   const { user } = useAuth();
@@ -33,7 +34,7 @@ export default function OwnerPanel() {
   if (isOwner && shops.length === 0) return <p className="muted">{t("own.no_shops")}</p>;
 
   const shop = shops.find((s) => s.id === shopId);
-  const tabs = isOwner ? ["today", "stats", "clients"] : ["today"];
+  const tabs = isOwner ? ["today", "stats", "clients", "manage"] : ["today"];
 
   return (
     <>
@@ -61,6 +62,7 @@ export default function OwnerPanel() {
       {tab === "today" && <BookingsTab shopName={shop?.name} />}
       {tab === "stats" && <StatsTab shopId={shopId} />}
       {tab === "clients" && <ClientsTab shopId={shopId} />}
+      {tab === "manage" && <ManageTab shopId={shopId} />}
     </>
   );
 }
