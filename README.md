@@ -173,6 +173,7 @@ Demo ma'lumot, sartaroshxona yoki sharh o'zgargach `index_knowledge` ni qayta is
 | `AI_ENGINE` | `graph` (LangGraph, standart) yoki `simple` (qo'lda yozilgan sikl) |
 | `TELEGRAM_BOT_TOKEN` | @BotFather bergan token |
 | `TELEGRAM_BOT_SECRET` | Bot va Django uchun bir xil maxfiy qator |
+| `PEXELS_API_KEY` | Ixtiyoriy: selfi tavsiyasida soch turmagi rasmlari (pexels.com/api, bepul) |
 | `API_BASE_URL` | Bot chaqiradigan API manzili |
 
 ## API
