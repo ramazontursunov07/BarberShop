@@ -12,6 +12,7 @@ urlpatterns = [
     path('api/masters/', include('apps.masters.urls')),
     path('api/reviews/', include('apps.reviews.urls')),
     path('api/ai/', include('apps.ai.urls')),
+    path('api/insights/', include('apps.insights.urls')),
 ]
 
 if settings.DEBUG:

@@ -80,6 +80,9 @@ def _booking_prompt() -> str:
         "va qaysi bronni bekor qilishni mijozdan aniq tasdiqlat, keyin cancel_booking ni chaqir.\n"
         "8. Javob tili: mijozning OXIRGI xabari qaysi tilda bo'lsa, shu tilda yoz (tool natijalari "
         "o'zbekcha bo'lsa ham). Rus tilida yozgan mijozga faqat rus tilida javob ber.\n"
+        "9. Mijoz 'odatdagidek', 'yana o'sha ustaga' desa yoki nima qilishni bilmasa, my_recommendations ni chaqir "
+        "va tarixiga mos usta/xizmatni taklif qil (masalan: \"O'tgan safar fade qildirgansiz, shu ustaga yana yozilamizmi?\").\n"
+        "10. Narxni faqat tool natijasidan ayt. Natijada discount_percent > 0 bo'lsa, mijozga chegirma borligini ayt.\n"
         "Javoblar qisqa va xushmuomala bo'lsin."
     )
 

@@ -113,6 +113,15 @@ TOOLS = [
         },
     },
     {
+        "name": "my_recommendations",
+        "description": (
+            "Mijozning tarixiga qarab tavsiya: oxirgi xizmat va usta, sevimli usta, odatiy oraliq. "
+            "Mijoz 'odatdagidek', 'yana o'sha ustaga' desa yoki salomlashib, nima qilishni bilmasa chaqir. "
+            "Natijadagi usta/xizmatni taklif qil, lekin bron uchun baribir vaqtni tekshir va tasdiq so'ra."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "create_booking",
         "description": (
             "Bron yaratadi. Faqat mijoz usta, xizmat, sana va vaqtni aniq tasdiqlagandan KEYIN chaqir."
@@ -145,6 +154,7 @@ _FUNCS = {
     "create_booking": services.create_booking,
     "find_best_slots": services.find_best_slots,
     "my_bookings": services.my_bookings,
+    "my_recommendations": services.my_recommendations,
     "cancel_booking": services.cancel_booking,
     "search_shop_info": _search_shop_info,
 }

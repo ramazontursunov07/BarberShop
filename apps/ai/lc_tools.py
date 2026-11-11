@@ -70,6 +70,12 @@ def make_tools(user):
         return _dump(run_tool("my_bookings", user, {"upcoming_only": upcoming_only}))
 
     @tool
+    def my_recommendations() -> str:
+        """Mijoz tarixiga qarab tavsiya: oxirgi xizmat va usta, sevimli usta. Mijoz 'odatdagidek' yoki
+        'yana o'sha ustaga' desa chaqir; natijadagi usta/xizmatni taklif qil, vaqtni baribir tekshir."""
+        return _dump(run_tool("my_recommendations", user, {}))
+
+    @tool
     def cancel_booking(booking_id: int) -> str:
         """Mijozning o'z bronini bekor qiladi. FAQAT mijoz qaysi bronni bekor qilishni aniq
         tasdiqlagandan KEYIN chaqir. booking_id ni my_bookings dan ol."""
@@ -85,5 +91,5 @@ def make_tools(user):
 
     return [
         list_shops, list_services, list_masters, get_available_slots, find_best_slots,
-        create_booking, my_bookings, cancel_booking, search_shop_info,
+        create_booking, my_bookings, my_recommendations, cancel_booking, search_shop_info,
     ]

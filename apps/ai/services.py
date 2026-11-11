@@ -21,6 +21,9 @@ from apps.shops.models import Shop
 
 from apps.bookings import services as booking_services
 
+from apps.insights import pricing
+from apps.insights.profile import client_profile
+
 from .slots import PARTS_OF_DAY, compute_slots, rank_slots
 
 # Sartaroshxona ish vaqtlari shu vaqt mintaqasida deb hisoblanadi
@@ -202,15 +205,21 @@ def find_best_slots(
         preferred=preferred,
         limit=limit,
     )
+    suggestions = []
+    for d, mid, hhmm in best:
+        start_local = datetime.combine(d, _parse_time(hhmm), tzinfo=SHOP_TZ)
+        pct = pricing.discount_percent(service.shop_id, start_local)
+        suggestions.append({
+            "date": d.isoformat(), "start_time": hhmm, "master_id": mid, "master": names[mid],
+            "price": pricing.apply_discount(service.price, pct), "discount_percent": pct,
+        })
     return {
         "service": service.name,
         "shop": service.shop.name,
+        "base_price": int(service.price),
         "requested_date": date,
         "searched_days": search_days,
-        "suggestions": [
-            {"date": d.isoformat(), "start_time": hhmm, "master_id": mid, "master": names[mid]}
-            for d, mid, hhmm in best
-        ],
+        "suggestions": suggestions,
     }
 
 
@@ -235,13 +244,15 @@ def create_booking(user, master_id: int, service_id: int, date: str, start_time:
 
         start_dt = datetime.combine(day, start, tzinfo=SHOP_TZ)
         end_dt = start_dt + timedelta(minutes=service.duration_minutes)
+        discount = pricing.discount_percent(service.shop_id, start_dt)
+        final_price = pricing.apply_discount(service.price, discount)
         booking = Booking.objects.create(
             client=user,
             master=master,
             service=service,
             start_time=start_dt,
             end_time=end_dt,
-            price=service.price,
+            price=final_price,
             status=Booking.Status.PENDING,
         )
 
@@ -250,12 +261,18 @@ def create_booking(user, master_id: int, service_id: int, date: str, start_time:
         "shop": master.shop.name,
         "master": _master_name(master),
         "service": service.name,
-        "price": int(service.price),
+        "price": final_price,
+        "discount_percent": discount,
         "date": date,
         "start_time": start_time,
         "end_time": end_dt.strftime("%H:%M"),
         "status": "pending",
     }
+
+def my_recommendations(user) -> dict:
+    """Mijoz tarixiga asoslangan tavsiya: sevimli usta/xizmat, oxirgi tashrif."""
+    return client_profile(user)
+
 
 def my_bookings(user, upcoming_only: bool = True) -> dict:
     """Mijozning o'z bronlari (faqat uniki: user tool'ga closure orqali bog'langan)."""

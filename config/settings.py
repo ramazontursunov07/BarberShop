@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "apps.bookings",
     "apps.reviews",
     "apps.ai",
+    "apps.insights",
 ]
 
 AUTH_USER_MODEL = "users.User"
