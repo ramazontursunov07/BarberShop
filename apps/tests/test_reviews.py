@@ -1,9 +1,10 @@
 from rest_framework.test import APIClient
 
 from apps.bookings.models import Booking
-from apps.bookings.tests import BookingTestBase
+from apps.tests.base import BookingTestBase
 
-from .models import Review
+from apps.reviews.models import Review
+
 
 URL = "/api/reviews/"
 

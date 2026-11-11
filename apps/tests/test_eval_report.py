@@ -1,6 +1,6 @@
 import unittest
 
-from .evals.scoring import CaseResult, Check, render_markdown, summarize
+from apps.ai.evals.scoring import CaseResult, Check, render_markdown, summarize
 
 
 class FailedCaseReportTests(unittest.TestCase):

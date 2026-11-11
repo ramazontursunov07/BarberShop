@@ -1,8 +1,8 @@
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from .models import User
-from .telegram import normalize_phone
+from apps.users.models import User
+from apps.users.telegram import normalize_phone
 
 SECRET = "test-secret"
 URL = "/api/users/telegram/auth/"

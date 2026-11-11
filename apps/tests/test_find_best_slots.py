@@ -3,10 +3,10 @@ from datetime import datetime, time, timedelta
 from django.utils import timezone
 
 from apps.bookings.models import Booking
-from apps.bookings.tests import BookingTestBase
+from apps.tests.base import BookingTestBase
 from apps.masters.models import DayOff
 
-from . import services
+from apps.ai import services
 
 
 class FindBestSlotsTests(BookingTestBase):

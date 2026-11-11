@@ -1,14 +1,12 @@
-from datetime import timedelta
 from io import StringIO
 from unittest import mock
 
 from django.core.management import call_command
-from django.utils import timezone
 
 from apps.bookings.models import Booking
-from apps.bookings.tests import BookingTestBase
+from apps.tests.base import BookingTestBase
 
-from .models import Notification
+from apps.ai.models import Notification
 
 
 class ReminderTests(BookingTestBase):

@@ -2,10 +2,10 @@
 import json
 
 from apps.bookings.models import Booking
-from apps.bookings.tests import BookingTestBase
+from apps.tests.base import BookingTestBase
 
-from .lc_tools import make_tools
-from .tools import record_tool_calls, run_tool
+from apps.ai.lc_tools import make_tools
+from apps.ai.tools import record_tool_calls, run_tool
 
 
 class ToolLayerTests(BookingTestBase):

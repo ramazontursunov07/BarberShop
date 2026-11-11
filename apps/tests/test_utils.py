@@ -1,9 +1,9 @@
 from datetime import date, datetime, time
 from unittest import TestCase
 
-from .chunking import chunk_text
-from .graph_utils import flatten_content, last_user_text, make_query, parse_route, transcript
-from .slots import PARTS_OF_DAY, compute_slots, rank_slots
+from apps.ai.chunking import chunk_text
+from apps.ai.graph_utils import flatten_content, last_user_text, make_query, parse_route, transcript
+from apps.ai.slots import PARTS_OF_DAY, compute_slots, rank_slots
 
 DAY = date(2026, 11, 9)
 

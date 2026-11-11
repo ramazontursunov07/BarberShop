@@ -60,3 +60,42 @@ def make_query(messages, short_len: int = 25) -> str:
     if len(last) < short_len and len(humans) > 1:
         return f"{humans[-2]} {last}"
     return last
+
+
+EMPTY_NUDGE = (
+    "Oldingi javobing bo'sh edi. Tool natijalariga asoslanib mijozga uning tilida qisqa javob yoz "
+    "yoki kerakli tool'ni chaqir."
+)
+
+FALLBACK_UZ = "Kechirasiz, javob tayyorlay olmadim. Iltimos, qayta urinib ko'ring."
+FALLBACK_RU = "Извините, не удалось подготовить ответ. Пожалуйста, попробуйте ещё раз."
+BUSY_UZ = "Bu so'rov juda uzoq davom etdi. Iltimos, «mening bronlarim» deb yozib, natijani tekshiring."
+BUSY_RU = "Запрос занял слишком много времени. Напишите «мои записи», чтобы проверить результат."
+
+
+def is_russian(text: str) -> bool:
+    letters = [c for c in (text or "") if c.isalpha()]
+    if not letters:
+        return False
+    cyr = sum(1 for c in letters if "\u0400" <= c <= "\u04ff")
+    return cyr / len(letters) > 0.5
+
+
+def fallback_reply(user_text: str, busy: bool = False) -> str:
+    """Model javob bera olmaganda mijoz tilida xabar (rus tilida yozgan mijozga rus tilida)."""
+    ru = is_russian(user_text)
+    if busy:
+        return BUSY_RU if ru else BUSY_UZ
+    return FALLBACK_RU if ru else FALLBACK_UZ
+
+
+def invoke_nonempty(invoke, messages, nudge_message, retries: int = 2):
+    """Ba'zi modellar (Gemini flash-lite) tool natijasidan keyin bo'sh javob qaytaradi.
+    Bo'sh javob (matn ham, tool chaqiruvi ham yo'q) kelsa, ogohlantirish bilan qayta so'raydi.
+    nudge_message faqat shu so'rovga qo'shiladi, graf holatiga tushmaydi."""
+    resp = invoke(messages)
+    for _ in range(retries):
+        if getattr(resp, "tool_calls", None) or flatten_content(getattr(resp, "content", "")).strip():
+            break
+        resp = invoke([*messages, nudge_message])
+    return resp

@@ -1,12 +1,10 @@
-from datetime import time
-
 from rest_framework.test import APIClient
 
 from apps.bookings.models import Booking
-from apps.bookings.tests import BookingTestBase, make_user
+from apps.tests.base import BookingTestBase, make_user
 from apps.reviews.models import Review
 
-from .models import WorkSchedule
+from apps.masters.models import WorkSchedule
 
 
 class MasterApiTests(BookingTestBase):

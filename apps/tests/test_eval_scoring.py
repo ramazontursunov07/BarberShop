@@ -1,8 +1,8 @@
 """Baholash tizimining o'zini sinaydi: Django ham, LLM ham kerak emas."""
 import unittest
 
-from .evals.cases import CASES, KNOWN_SETUPS
-from .evals.scoring import (
+from apps.ai.evals.cases import CASES, KNOWN_SETUPS
+from apps.ai.evals.scoring import (
     ARGUMENTS,
     CONTENT,
     LANGUAGE,
@@ -173,4 +173,3 @@ class SummaryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-    

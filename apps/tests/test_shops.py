@@ -10,7 +10,8 @@ from django.urls import reverse
 from PIL import Image
 from rest_framework.test import APITestCase
 
-from .models import Shop, ShopPhoto
+from apps.shops.models import Shop, ShopPhoto
+
 
 User = get_user_model()
 TEMP_MEDIA = tempfile.mkdtemp()  # test rasmlari haqiqiy media/ papkasiga tushmasin

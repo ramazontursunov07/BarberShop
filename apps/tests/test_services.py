@@ -2,10 +2,10 @@ from datetime import time
 
 from rest_framework.test import APIClient
 
-from apps.bookings.tests import BookingTestBase, make_user
+from apps.tests.base import BookingTestBase, make_user
 from apps.shops.models import Shop
 
-from .models import Service
+from apps.services.models import Service
 
 
 class ServiceApiTests(BookingTestBase):
@@ -76,4 +76,3 @@ class ServiceApiTests(BookingTestBase):
         self.api.force_authenticate(self.other_owner)
         resp = self.api.patch(f"/api/services/my/{self.service.id}/", {"price": 1}, format="json")
         self.assertEqual(resp.status_code, 404)
-        

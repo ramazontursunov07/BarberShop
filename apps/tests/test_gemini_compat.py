@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from .gemini_compat import BYPASS_SIGNATURE, add_thought_signature_bypass, is_gemini_endpoint
+from apps.ai.gemini_compat import BYPASS_SIGNATURE, add_thought_signature_bypass, is_gemini_endpoint
 
 
 class GeminiCompatTests(TestCase):

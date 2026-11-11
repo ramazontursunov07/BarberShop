@@ -19,17 +19,23 @@ from datetime import date
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
+from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
 
 from . import rag
 from .confirmation import REJECT_MESSAGE, is_confirmation, needs_confirmation
 from .gemini_compat import add_thought_signature_bypass, is_gemini_endpoint
-from .graph_utils import flatten_content, last_user_text, make_query, parse_route, transcript
+from .graph_utils import (
+    EMPTY_NUDGE, fallback_reply, flatten_content, invoke_nonempty, last_user_text, make_query, parse_route,
+    transcript,
+)
 from .lc_tools import make_tools
 from .llm import conf
 
-RECURSION_LIMIT = 12  # graf cheksiz aylanib ketmasligi uchun
+# Graf cheksiz aylanib ketmasligi uchun. Bron oqimi (qidiruv + tasdiq + yaratish) 5-6 tool chaqiruvi talab qilishi
+# mumkin, har biri 2 qadam, shuning uchun 12 yetmaydi (book_flow_ru shu sabab yiqilgan).
+RECURSION_LIMIT = 24
 
 ROUTER_PROMPT = (
     "Sen yo'naltiruvchisan. Mijozning oxirgi xabari qaysi turga kirishini aniqla va "
@@ -129,7 +135,8 @@ def build_graph(user):
         return {"messages": [resp]}
 
     def booking_agent(state: State) -> dict:
-        resp = llm_with_tools.invoke([SystemMessage(content=_booking_prompt()), *state["messages"]])
+        messages = [SystemMessage(content=_booking_prompt()), *state["messages"]]
+        resp = invoke_nonempty(llm_with_tools.invoke, messages, HumanMessage(content=EMPTY_NUDGE))
         return {"messages": [resp]}
 
     guard_on = conf("AI_CONFIRM_GUARD", "on").strip().lower() != "off"  # "off": faqat tajriba (A/B) uchun
@@ -185,6 +192,10 @@ def _history_to_messages(history: list[dict] | None) -> list:
 def run_graph(user, message: str, history: list[dict] | None = None) -> str:
     graph = build_graph(user)
     messages = _history_to_messages(history) + [HumanMessage(content=message)]
-    result = graph.invoke({"messages": messages}, config={"recursion_limit": RECURSION_LIMIT})
+    try:
+        result = graph.invoke({"messages": messages}, config={"recursion_limit": RECURSION_LIMIT})
+    except GraphRecursionError:
+        # Bron yaratilib ulgurgan bo'lishi mumkin: mijozga natijani tekshirishni aytamiz
+        return fallback_reply(message, busy=True)
     reply = flatten_content(result["messages"][-1].content).strip()
-    return reply or "Kechirasiz, javob tayyorlay olmadim. Iltimos, qayta urinib ko'ring."
+    return reply or fallback_reply(message)

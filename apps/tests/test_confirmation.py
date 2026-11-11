@@ -1,7 +1,7 @@
 import unittest
 
-from .confirmation import GUARDED_TOOLS, is_confirmation, needs_confirmation
-from .evals.cases import CASES
+from apps.ai.confirmation import GUARDED_TOOLS, is_confirmation, needs_confirmation
+from apps.ai.evals.cases import CASES
 
 
 class IsConfirmationTests(unittest.TestCase):

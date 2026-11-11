@@ -1,6 +1,8 @@
 from unittest import TestCase
 
-from .evals.ratelimit import describe_error, is_daily_limit, parse_retry_delay
+from unittest import TestCase
+
+from apps.ai.evals.ratelimit import describe_error, is_daily_limit, parse_retry_delay
 
 
 class RateLimitParsingTests(TestCase):

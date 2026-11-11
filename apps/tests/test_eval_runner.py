@@ -12,9 +12,9 @@ from django.test import SimpleTestCase, TestCase
 
 from apps.bookings.models import Booking
 
-from .evals.cases import CASES
-from .evals.runner import EvalEnv, eval_today, fixed_today, run_case
-from .tools import run_tool
+from apps.ai.evals.cases import CASES
+from apps.ai.evals.runner import EvalEnv, eval_today, fixed_today, run_case
+from apps.ai.tools import run_tool
 
 BY_ID = {c["id"]: c for c in CASES}
 
@@ -28,7 +28,7 @@ class EvalHelpersTests(SimpleTestCase):
             self.assertTrue(day <= result < day + timedelta(days=7))
 
     def test_fixed_today_changes_the_prompt_date(self):
-        from . import graph
+        from .. import graph
 
         with fixed_today(date(2030, 1, 7)):
             self.assertIn("2030-01-07", graph._booking_prompt())
