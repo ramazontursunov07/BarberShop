@@ -78,5 +78,20 @@ class BackendClient:
             raise ApiError(resp.status_code, _detail(resp))
         return resp.json()
 
+    async def nearby_shops(self, lat: float, lng: float, limit: int = 5) -> list[dict]:
+        resp = await self._http.get("/api/shops/nearby/", params={"lat": lat, "lng": lng, "limit": limit})
+        if resp.status_code != 200:
+            raise ApiError(resp.status_code, _detail(resp))
+        return resp.json()
+
+    async def post_review(self, token: str, booking_id: int, rating: int) -> None:
+        resp = await self._http.post(
+            "/api/reviews/",
+            json={"booking": booking_id, "rating": rating},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        if resp.status_code not in (200, 201):
+            raise ApiError(resp.status_code, _detail(resp))
+
     async def close(self) -> None:
         await self._http.aclose()

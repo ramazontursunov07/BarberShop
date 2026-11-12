@@ -33,7 +33,7 @@ from .services import (
 
 
 def _related(qs):
-    return qs.select_related("client", "master__user", "master__shop", "service")
+    return qs.select_related("client", "master__user", "master__shop", "service").prefetch_related("extra_services")
 
 
 def _filter_by_params(qs, params):
@@ -75,6 +75,7 @@ class BookingListCreateView(generics.ListCreateAPIView):
                 start_time=data["start_time"].strftime("%H:%M"),
                 promo_code=data["promo_code"],
                 certificate_code=data["certificate_code"],
+                extra_service_ids=data["extra_services"] or None,
             )
         except ObjectDoesNotExist:
             return Response({"detail": "Usta yoki xizmat topilmadi"}, status=status.HTTP_404_NOT_FOUND)
@@ -202,10 +203,113 @@ class BookingStatusView(APIView):
         serializer = BookingStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            booking = change_status(request.user, pk, serializer.validated_data["status"])
+            booking = change_status(request.user, pk, serializer.validated_data["status"],
+                                    payment_method=serializer.validated_data.get("payment_method", ""))
         except BookingForbidden as exc:
             raise PermissionDenied(str(exc))
         except BookingError as exc:
             code = status.HTTP_404_NOT_FOUND if str(exc) == "Bron topilmadi" else status.HTTP_400_BAD_REQUEST
             return Response({"detail": str(exc)}, status=code)
         return Response(booking)
+
+
+# ---------------------------------------------------------------- jonli navbat va doimiy bronlar
+
+from rest_framework.permissions import IsAuthenticated  # noqa: E402
+
+from . import queue as live_queue  # noqa: E402
+from . import recurring  # noqa: E402
+
+
+def _call(fn, *args, **kwargs):
+    try:
+        return fn(*args, **kwargs)
+    except BookingForbidden as exc:
+        raise PermissionDenied(str(exc))
+    except BookingError as exc:
+        raise ValidationError({"detail": str(exc)})
+
+
+class QueueView(APIView):
+    """GET — mening navbatim; POST {shop, service, master?} — navbatga turish; DELETE — chiqish."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(live_queue.my_ticket(request.user) or {"status": "none"})
+
+    def post(self, request):
+        try:
+            shop, service = int(request.data["shop"]), int(request.data["service"])
+            master = int(request.data["master"]) if request.data.get("master") else None
+        except (KeyError, TypeError, ValueError):
+            raise ValidationError({"detail": "shop va service majburiy"})
+        return Response(_call(live_queue.join, request.user, shop, service, master), status=status.HTTP_201_CREATED)
+
+    def delete(self, request):
+        return Response(_call(live_queue.leave, request.user))
+
+
+class QueueStaffView(APIView):
+    """Usta/egasi: GET ?shop=<id> — navbat ro'yxati."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        raw = request.query_params.get("shop", "")
+        if not raw.isdigit():
+            raise ValidationError({"shop": "?shop=<id> majburiy"})
+        return Response(_call(live_queue.list_for_staff, request.user, int(raw)))
+
+
+class QueueCallNextView(APIView):
+    """Usta/egasi: POST {master} — keyingi mijozni chaqirish."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            master = int(request.data["master"])
+        except (KeyError, TypeError, ValueError):
+            raise ValidationError({"detail": "master majburiy"})
+        return Response(_call(live_queue.call_next, request.user, master))
+
+
+class QueueFinishView(APIView):
+    """Usta/egasi: POST {payment_method?} — xizmat tugadi."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        return Response(_call(live_queue.finish, request.user, pk, request.data.get("payment_method", "")))
+
+
+class RecurringListCreateView(APIView):
+    """GET — doimiy bronlarim; POST {master, service, date, start_time, every_weeks, end_date?}."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(recurring.list_mine(request.user))
+
+    def post(self, request):
+        from datetime import date, time
+
+        d = request.data
+        try:
+            rule = recurring.create(
+                request.user, int(d["master"]), int(d["service"]), date.fromisoformat(d["date"]),
+                time.fromisoformat(d["start_time"]), int(d.get("every_weeks", 2)),
+                date.fromisoformat(d["end_date"]) if d.get("end_date") else None)
+        except (KeyError, TypeError, ValueError) as exc:
+            if isinstance(exc, BookingError):
+                raise ValidationError({"detail": str(exc)})
+            raise ValidationError({"detail": "master, service, date, start_time majburiy va to'g'ri formatda bo'lishi kerak"})
+        return Response(rule, status=status.HTTP_201_CREATED)
+
+
+class RecurringDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        return Response(_call(recurring.stop, request.user, pk))

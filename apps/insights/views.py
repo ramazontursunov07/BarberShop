@@ -112,3 +112,33 @@ class HairstyleView(APIView):
         except OpenAIError as exc:
             logger.error("Vision provayderi xatosi: %s", getattr(exc, "message", exc))
             return Response({"detail": "Rasmni tahlil qilib bo'lmadi"}, status=status.HTTP_502_BAD_GATEWAY)
+
+
+class PayrollView(_OwnerShopView):
+    """GET /api/insights/payroll/?shop=<id>&from=YYYY-MM-DD&to=YYYY-MM-DD[&export=csv]
+
+    Standart: joriy oy. Usta ulushi — Master.commission_percent bo'yicha."""
+
+    def get(self, request):
+        from datetime import date, datetime
+
+        from django.http import HttpResponse
+
+        from apps.bookings.services import SHOP_TZ
+        from .payroll import payroll_report, to_csv
+
+        shop = self.get_shop(request)
+        today = datetime.now(SHOP_TZ).date()
+        try:
+            start = date.fromisoformat(request.query_params.get("from") or today.replace(day=1).isoformat())
+            end = date.fromisoformat(request.query_params.get("to") or today.isoformat())
+        except ValueError:
+            raise ValidationError({"detail": "Sana YYYY-MM-DD formatida bo'lishi kerak"})
+        if end < start or (end - start).days > 366:
+            raise ValidationError({"detail": "Oraliq noto'g'ri (eng ko'pi bilan 1 yil)"})
+        report = payroll_report(shop, start, end)
+        if request.query_params.get("export") == "csv":
+            resp = HttpResponse(to_csv(report), content_type="text/csv; charset=utf-8")
+            resp["Content-Disposition"] = f'attachment; filename="payroll_{start}_{end}.csv"'
+            return resp
+        return Response(report)

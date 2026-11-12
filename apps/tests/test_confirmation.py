@@ -35,7 +35,8 @@ class IsConfirmationTests(unittest.TestCase):
         self.assertFalse(needs_confirmation([{"name": "find_best_slots"}]))
         self.assertFalse(needs_confirmation([]))
         self.assertFalse(needs_confirmation(None))
-        self.assertEqual(GUARDED_TOOLS, {"create_booking", "cancel_booking"})
+        self.assertEqual(GUARDED_TOOLS, {"create_booking", "cancel_booking", "reschedule_booking", "join_queue",
+                                         "create_recurring_booking", "stop_recurring"})
 
 
 class DatasetConsistencyTests(unittest.TestCase):

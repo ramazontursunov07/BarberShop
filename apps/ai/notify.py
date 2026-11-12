@@ -12,7 +12,7 @@ from .llm import conf
 logger = logging.getLogger(__name__)
 
 
-def send_telegram(chat_id: int, text: str) -> bool:
+def send_telegram(chat_id: int, text: str, reply_markup: dict | None = None) -> bool:
     token = conf("TELEGRAM_BOT_TOKEN")
     if not token:
         logger.error("TELEGRAM_BOT_TOKEN sozlanmagan")
@@ -20,7 +20,7 @@ def send_telegram(chat_id: int, text: str) -> bool:
     try:
         resp = httpx.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": text},
+            json={"chat_id": chat_id, "text": text, **({"reply_markup": reply_markup} if reply_markup else {})},
             timeout=15,
         )
     except httpx.HTTPError as exc:

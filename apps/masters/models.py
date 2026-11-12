@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator
 from django.db import models
 from django.db.models import UniqueConstraint
 
@@ -12,6 +13,10 @@ class Master(models.Model):
     bio = models.TextField(blank=True)
     photo = models.ImageField(upload_to='masters/', null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    commission_percent = models.PositiveSmallIntegerField(
+        default=50, validators=[MaxValueValidator(100)],
+        help_text="Ustaning ulushi (%): bajarilgan xizmat daromadidan",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

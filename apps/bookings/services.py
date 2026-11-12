@@ -46,6 +46,11 @@ def master_name(master) -> str:
     return f"{user.first_name} {user.last_name}".strip() or f"Usta #{master.id}"
 
 
+def services_label(b: Booking) -> str:
+    """"Soch olish + Soqol": asosiy va qo'shimcha xizmatlar bitta qatorda."""
+    return " + ".join([b.service.name] + [s.name for s in b.extra_services.all()])
+
+
 def booking_to_dict(b: Booking) -> dict:
     start = b.start_time.astimezone(SHOP_TZ)
     end = b.end_time.astimezone(SHOP_TZ)
@@ -53,7 +58,8 @@ def booking_to_dict(b: Booking) -> dict:
         "id": b.id,
         "shop": b.master.shop.name,
         "master": master_name(b.master),
-        "service": b.service.name,
+        "service": services_label(b),
+        "extra_services": [s.name for s in b.extra_services.all()],
         "price": int(b.price),
         "date": start.strftime("%Y-%m-%d"),
         "start_time": start.strftime("%H:%M"),
@@ -63,7 +69,7 @@ def booking_to_dict(b: Booking) -> dict:
 
 
 def _with_relations(qs):
-    return qs.select_related("master__user", "master__shop", "service")
+    return qs.select_related("master__user", "master__shop", "service").prefetch_related("extra_services")
 
 
 # ------------------------------------------------------------------ mijoz
@@ -95,6 +101,7 @@ def cancel_by_client(user, booking_id: int) -> dict:
         booking.status = Booking.Status.CANCELLED
         booking.save(update_fields=["status"])
         _free_slot_hook(booking)
+        events.notify_master_cancelled(booking)
     return booking_to_dict(booking)
 
 
@@ -138,21 +145,26 @@ def reschedule_by_client(user, booking_id: int, date: str, start_time: str, mast
         Master.objects.select_for_update().get(pk=target.pk)
         target = Master.objects.select_related("user", "shop").get(pk=target.pk)
 
-        if start_time not in availability._get_slots(target, booking.service, day, exclude_booking_id=booking.pk):
+        duration = booking.end_time - booking.start_time  # ko'p xizmatli bronda ham umumiy davomiylik saqlanadi
+        minutes = int(duration.total_seconds() // 60)
+        if start_time not in availability._get_slots(target, booking.service, day, exclude_booking_id=booking.pk,
+                                                     duration_minutes=minutes):
             raise BookingError("Bu vaqt band yoki ish vaqtidan tashqarida. Boshqa vaqt tanlang.")
 
         old_copy = Booking(master=booking.master, client=booking.client, service=booking.service,
                            start_time=booking.start_time, end_time=booking.end_time)
+        old_when, old_master_user = events.when(booking), booking.master.user
         new_start = datetime.combine(day, start, tzinfo=SHOP_TZ)
         if new_start <= timezone.now():
             raise BookingError("O'tgan vaqtga ko'chirib bo'lmaydi")
         booking.master = target
         booking.start_time = new_start
-        booking.end_time = new_start + timedelta(minutes=booking.service.duration_minutes)
+        booking.end_time = new_start + duration
         booking.save(update_fields=["master", "start_time", "end_time"])
         # Eslatmalar yangi vaqt uchun qayta yuborilishi kerak
         booking.notifications.all().delete()
         _free_slot_hook(old_copy)
+        events.notify_master_rescheduled(booking, old_when, old_master_user)
     return booking_to_dict(booking)
 
 
@@ -169,10 +181,18 @@ def _can_manage(actor, booking: Booking) -> bool:
     return booking.master.shop.owner_id == actor.id or booking.master.user_id == actor.id
 
 
-def change_status(actor, booking_id: int, new_status: str) -> dict:
-    """Sartaroshxona egasi yoki bronning ustasi holatni o'zgartiradi."""
+def change_status(actor, booking_id: int, new_status: str, payment_method: str = "") -> dict:
+    """Sartaroshxona egasi yoki bronning ustasi holatni o'zgartiradi.
+
+    payment_method (cash/card/transfer) faqat "bajarildi" holatida beriladi: kassa va usta ulushi hisoboti uchun.
+    """
     if new_status not in Booking.Status.values:
         raise BookingError("Noma'lum status")
+    if payment_method:
+        if new_status != Booking.Status.COMPLETED:
+            raise BookingError("To'lov usuli faqat 'bajarilgan' holatida beriladi")
+        if payment_method not in Booking.PaymentMethod.values:
+            raise BookingError("To'lov usuli: cash, card yoki transfer")
 
     with transaction.atomic():
         booking = (
@@ -193,12 +213,18 @@ def change_status(actor, booking_id: int, new_status: str) -> dict:
             raise BookingError("Bron vaqti hali boshlanmagan")
 
         booking.status = new_status
-        booking.save(update_fields=["status"])
+        fields = ["status"]
+        if payment_method:
+            booking.payment_method = payment_method
+            fields.append("payment_method")
+        booking.save(update_fields=fields)
 
         if new_status == Booking.Status.NO_SHOW:
             _register_no_show(booking.client)
         if new_status == Booking.Status.CANCELLED:
             _free_slot_hook(booking)
+            if booking.master.user_id != actor.id or booking.master.shop.owner_id == actor.id:
+                events.notify_client_cancelled_by_staff(booking)
     return booking_to_dict(booking)
 
 
@@ -217,3 +243,7 @@ def _register_no_show(client) -> None:
         type(client).objects.filter(pk=client.pk).update(
             blocked_until=timezone.now() + timedelta(days=BLOCK_DAYS)
         )
+
+
+# events xabarlari services'dan funksiyalar import qiladi: aylanma importdan saqlanish uchun oxirida
+from . import events  # noqa: E402

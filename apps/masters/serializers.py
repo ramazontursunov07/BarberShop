@@ -28,7 +28,7 @@ class MasterSerializer(serializers.ModelSerializer):
 class MasterUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Master
-        fields = ("bio", "is_active")
+        fields = ("bio", "is_active", "commission_percent")
 
 
 class ScheduleSerializer(serializers.ModelSerializer):

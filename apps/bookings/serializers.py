@@ -1,13 +1,13 @@
 from rest_framework import serializers
 
 from .models import Booking, WaitlistEntry
-from .services import SHOP_TZ, master_name
+from .services import SHOP_TZ, master_name, services_label
 
 
 class BookingSerializer(serializers.ModelSerializer):
     shop = serializers.CharField(source="master.shop.name", read_only=True)
     master_name = serializers.SerializerMethodField()
-    service_name = serializers.CharField(source="service.name", read_only=True)
+    service_name = serializers.SerializerMethodField()
     start_time = serializers.SerializerMethodField()
     end_time = serializers.SerializerMethodField()
     client_name = serializers.SerializerMethodField()
@@ -17,8 +17,11 @@ class BookingSerializer(serializers.ModelSerializer):
         model = Booking
         fields = ("id", "shop", "client_name", "client_phone", "master", "master_name", "service", "service_name",
                   "start_time", "end_time", "price", "discount_amount", "loyalty_applied",
-                  "certificate_amount", "status", "created_at")
+                  "certificate_amount", "payment_method", "status", "created_at")
         read_only_fields = fields
+
+    def get_service_name(self, obj):
+        return services_label(obj)
 
     def get_master_name(self, obj):
         return master_name(obj.master)
@@ -41,6 +44,8 @@ class BookingCreateSerializer(serializers.Serializer):
     start_time = serializers.TimeField(format="%H:%M", input_formats=["%H:%M"])
     promo_code = serializers.CharField(required=False, allow_blank=True, default="")
     certificate_code = serializers.CharField(required=False, allow_blank=True, default="")
+    extra_services = serializers.ListField(child=serializers.IntegerField(), required=False, default=list,
+                                           max_length=3)
 
 
 class RescheduleSerializer(serializers.Serializer):
@@ -70,6 +75,7 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
 
 class BookingStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Booking.Status.choices)
+    payment_method = serializers.ChoiceField(choices=Booking.PaymentMethod.choices, required=False, default="")
 
 
 class SlotQuerySerializer(serializers.Serializer):

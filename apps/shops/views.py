@@ -7,6 +7,8 @@ from .serializers import (
 
 from django.db.models import Avg, Count
 from rest_framework import generics, permissions
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from .models import Shop
 from .permissions import IsOwnerRole, IsShopOwner
 
@@ -65,3 +67,25 @@ class ShopPhotoCreateView(generics.CreateAPIView):
     serializer_class = ShopPhotoCreateSerializer
     permission_classes = [IsOwnerRole]
     parser_classes = [MultiPartParser, FormParser]
+
+
+class NearbyShopsView(APIView):
+    """GET /api/shops/nearby/?lat=41.31&lng=69.24&radius_km=10&limit=5 — mijozga eng yaqin sartaroshxonalar."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        from rest_framework.exceptions import ValidationError
+
+        from .nearby import nearby_shops
+
+        try:
+            lat = float(request.query_params["lat"])
+            lng = float(request.query_params["lng"])
+            radius = float(request.query_params.get("radius_km", 10))
+            limit = int(request.query_params.get("limit", 5))
+        except (KeyError, ValueError):
+            raise ValidationError({"detail": "lat va lng (son) majburiy"})
+        if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+            raise ValidationError({"detail": "Koordinata noto'g'ri"})
+        return Response(nearby_shops(lat, lng, min(max(radius, 0.1), 100), min(max(limit, 1), 20)))

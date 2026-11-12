@@ -19,6 +19,7 @@ from apps.masters.models import DayOff, Master, WorkSchedule
 from apps.services.models import Service
 from apps.shops.models import Shop
 
+from apps.bookings import events as booking_events
 from apps.bookings import services as booking_services
 
 from apps.insights import pricing
@@ -112,7 +113,8 @@ def list_masters(user, shop_id: int | None = None) -> list[dict]:
     ]
 
 
-def _get_slots(master: Master, service: Service, day, exclude_booking_id: int | None = None) -> list[str]:
+def _get_slots(master: Master, service: Service, day, exclude_booking_id: int | None = None,
+               duration_minutes: int | None = None) -> list[str]:
     """exclude_booking_id: shu bronni band hisoblamaydi (bronni ko'chirishda o'z vaqti bilan to'qnashmasligi uchun)."""
     if master.shop_id != service.shop_id:
         raise ValueError("Bu xizmat tanlangan ustaning sartaroshxonasiga tegishli emas")
@@ -148,21 +150,50 @@ def _get_slots(master: Master, service: Service, day, exclude_booking_id: int | 
         work_start=work_start,
         work_end=work_end,
         busy=busy,
-        duration_minutes=service.duration_minutes,
+        duration_minutes=duration_minutes or service.duration_minutes,
         step_minutes=SLOT_STEP_MINUTES,
         now=_local_now().replace(tzinfo=None),
     )
 
 
-def get_available_slots(user, master_id: int, service_id: int, date: str) -> dict:
+MAX_EXTRA_SERVICES = 3
+
+
+def _resolve_extras(service: Service, extra_service_ids) -> list[Service]:
+    """Bir tashrifdagi qo'shimcha xizmatlar: o'sha sartaroshxona, faol, takrorsiz, asosiy xizmatdan boshqa."""
+    ids = []
+    for raw in extra_service_ids or []:
+        sid = int(raw)
+        if sid != service.id and sid not in ids:
+            ids.append(sid)
+    if len(ids) > MAX_EXTRA_SERVICES:
+        raise ValueError(f"Bir tashrifda asosiy xizmatdan tashqari {MAX_EXTRA_SERVICES} tadan ko'p xizmat tanlab bo'lmaydi")
+    extras = list(Service.objects.filter(pk__in=ids, shop_id=service.shop_id, is_active=True))
+    if len(extras) != len(ids):
+        raise ValueError("Qo'shimcha xizmat topilmadi yoki boshqa sartaroshxonaga tegishli")
+    by_id = {s.id: s for s in extras}
+    return [by_id[i] for i in ids]
+
+
+def _totals(service: Service, extras: list[Service]) -> tuple[int, int]:
+    """(umumiy davomiylik daqiqa, umumiy narx so'm)."""
+    return (service.duration_minutes + sum(s.duration_minutes for s in extras),
+            int(service.price) + sum(int(s.price) for s in extras))
+
+
+def get_available_slots(user, master_id: int, service_id: int, date: str,
+                        extra_service_ids: list[int] | None = None) -> dict:
     day = _parse_date(date)
     master = Master.objects.select_related("user", "shop").get(pk=master_id, is_active=True)
     service = Service.objects.get(pk=service_id, is_active=True)
+    extras = _resolve_extras(service, extra_service_ids)
+    minutes, _ = _totals(service, extras)
     return {
         "master": _master_name(master),
-        "service": service.name,
+        "service": " + ".join([service.name] + [s.name for s in extras]),
         "date": date,
-        "slots": _get_slots(master, service, day),
+        "duration_minutes": minutes,
+        "slots": _get_slots(master, service, day, duration_minutes=minutes),
     }
 
 
@@ -175,6 +206,7 @@ def find_best_slots(
         preferred_time: str | None = None,
         search_days: int = 3,
         limit: int = 5,
+        extra_service_ids: list[int] | None = None,
 ) -> dict:
     """Xizmat uchun eng mos bo'sh vaqtlarni topadi (usta tanlanmasa, hamma ustalar bo'yicha).
 
@@ -195,12 +227,14 @@ def find_best_slots(
         if not masters:
             raise ValueError("Bu usta ushbu xizmat sartaroshxonasida topilmadi")
 
+    extras = _resolve_extras(service, extra_service_ids)
+    minutes, total_price = _totals(service, extras)
     names = {m.id: _master_name(m) for m in masters}
     candidates = []
     for offset in range(search_days):
         day = start_day + timedelta(days=offset)
         for m in masters:
-            for hhmm in _get_slots(m, service, day):
+            for hhmm in _get_slots(m, service, day, duration_minutes=minutes):
                 candidates.append((day, m.id, hhmm))
 
     best = rank_slots(
@@ -215,12 +249,13 @@ def find_best_slots(
         pct = pricing.discount_percent(service.shop_id, start_local)
         suggestions.append({
             "date": d.isoformat(), "start_time": hhmm, "master_id": mid, "master": names[mid],
-            "price": pricing.apply_discount(service.price, pct), "discount_percent": pct,
+            "price": pricing.apply_discount(total_price, pct), "discount_percent": pct,
         })
     return {
         "service": service.name,
         "shop": service.shop.name,
-        "base_price": int(service.price),
+        "base_price": total_price,
+        "duration_minutes": minutes,
         "requested_date": date,
         "searched_days": search_days,
         "suggestions": suggestions,
@@ -230,7 +265,8 @@ def find_best_slots(
 # ------------------------------------------------------------------ yozish
 
 def create_booking(user, master_id: int, service_id: int, date: str, start_time: str,
-                   promo_code: str = "", certificate_code: str = "") -> dict:
+                   promo_code: str = "", certificate_code: str = "",
+                   extra_service_ids: list[int] | None = None) -> dict:
     """Bron yaratadi. Mijoz HAR DOIM so'rov yuborgan foydalanuvchi (model emas!).
 
     promo_code / certificate_code ixtiyoriy; noto'g'ri bo'lsa bron YARATILMAYDI va xato qaytadi."""
@@ -246,13 +282,16 @@ def create_booking(user, master_id: int, service_id: int, date: str, start_time:
         master = Master.objects.select_related("user", "shop").get(pk=master.pk)
         service = Service.objects.get(pk=service_id, is_active=True)
 
-        if start_time not in _get_slots(master, service, day):
+        extras = _resolve_extras(service, extra_service_ids)
+        minutes, _total = _totals(service, extras)
+        if start_time not in _get_slots(master, service, day, duration_minutes=minutes):
             return {"error": "Bu vaqt band yoki ish vaqtidan tashqarida. Boshqa vaqt tanlang."}
 
         start_dt = datetime.combine(day, start, tzinfo=SHOP_TZ)
-        end_dt = start_dt + timedelta(minutes=service.duration_minutes)
+        end_dt = start_dt + timedelta(minutes=minutes)
         try:
-            quote = promotions.quote(user, service, start_dt, promo_code, certificate_code, lock=True)
+            quote = promotions.quote(user, service, start_dt, promo_code, certificate_code, lock=True,
+                                     extra_price=sum(int(s.price) for s in extras))
         except promotions.PromotionError as exc:
             return {"error": str(exc)}
         booking = Booking.objects.create(
@@ -269,17 +308,21 @@ def create_booking(user, master_id: int, service_id: int, date: str, start_time:
             certificate=quote.certificate,
             certificate_amount=quote.certificate_amount,
         )
+        if extras:
+            booking.extra_services.set(extras)
         # Kutish ro'yxatida turgan bo'lsa, endi bron qilingan
         WaitlistEntry.objects.filter(
             client=user, service=service, date=day,
             status__in=[WaitlistEntry.Status.WAITING, WaitlistEntry.Status.NOTIFIED],
         ).update(status=WaitlistEntry.Status.BOOKED)
+        booking_events.notify_master_new(booking)
 
     return {
         "booking_id": booking.id,
         "shop": master.shop.name,
         "master": _master_name(master),
-        "service": service.name,
+        "service": " + ".join([service.name] + [s.name for s in extras]),
+        "duration_minutes": minutes,
         "price": quote.final_price,
         "base_price": quote.base_price,
         "discount_percent": quote.discount_percent,
@@ -308,3 +351,79 @@ def my_bookings(user, upcoming_only: bool = True) -> dict:
 def cancel_booking(user, booking_id: int) -> dict:
     """Mijoz o'z bronini bekor qiladi (qoidalar bookings.services da)."""
     return booking_services.cancel_by_client(user, booking_id)
+
+
+# ---------------------------------------------------------------- ko'chirish, kutish, narx, navbat, doimiy bron
+
+def reschedule_booking(user, booking_id: int, date: str, start_time: str, master_id: int | None = None) -> dict:
+    """Mijoz bronini boshqa vaqtga ko'chiradi (bekor qilish qoidalari amal qiladi)."""
+    return booking_services.reschedule_by_client(user, booking_id, date, start_time, master_id=master_id or None)
+
+
+def join_waitlist(user, service_id: int, date: str, master_id: int | None = None,
+                  from_time: str | None = None, to_time: str | None = None) -> dict:
+    """Vaqt band bo'lsa kutish ro'yxatiga yozadi: bo'shaganda mijozga Telegram xabar boradi."""
+    from apps.bookings import waitlist
+
+    day = _parse_date(date)
+    service = Service.objects.get(pk=service_id, is_active=True)
+    master = Master.objects.get(pk=master_id, is_active=True) if master_id else None
+    entry = waitlist.join(user, service, day, master=master,
+                          from_time=_parse_time(from_time) if from_time else None,
+                          to_time=_parse_time(to_time) if to_time else None)
+    return waitlist.entry_to_dict(entry)
+
+
+def quote_price(user, service_id: int, date: str, start_time: str, promo_code: str = "",
+                certificate_code: str = "", extra_service_ids: list[int] | None = None) -> dict:
+    """Bron yaratmasdan yakuniy narxni hisoblaydi (chegirma, promokod, sertifikat)."""
+    service = Service.objects.get(pk=service_id, is_active=True)
+    extras = _resolve_extras(service, extra_service_ids)
+    minutes, total = _totals(service, extras)
+    start_dt = datetime.combine(_parse_date(date), _parse_time(start_time), tzinfo=SHOP_TZ)
+    q = promotions.quote(user, service, start_dt, promo_code, certificate_code,
+                         extra_price=sum(int(s.price) for s in extras))
+    return {"service": " + ".join([service.name] + [s.name for s in extras]), "duration_minutes": minutes,
+            "base_price": q.base_price, "discount_amount": q.discount_amount, "discount_percent": q.discount_percent,
+            "discount_kind": q.discount_kind, "certificate_amount": q.certificate_amount,
+            "final_price": q.final_price, "notes": q.notes}
+
+
+def join_queue(user, shop_id: int, service_id: int, master_id: int | None = None) -> dict:
+    """Hoziroq kelmoqchi bo'lgan mijozni jonli navbatga qo'yadi; kutish vaqtini qaytaradi."""
+    from apps.bookings import queue
+
+    return queue.join(user, shop_id, service_id, master_id or None)
+
+
+def queue_status(user) -> dict:
+    from apps.bookings import queue
+
+    return queue.my_ticket(user) or {"status": "none", "message": "Siz navbatda emassiz"}
+
+
+def leave_queue(user) -> dict:
+    from apps.bookings import queue
+
+    return queue.leave(user)
+
+
+def create_recurring_booking(user, master_id: int, service_id: int, date: str, start_time: str,
+                             every_weeks: int = 2, end_date: str | None = None) -> dict:
+    """Doimiy bron: shu usta, shu hafta kuni va soat, har N haftada. Birinchi uchrashuv darhol bron qilinadi."""
+    from apps.bookings import recurring
+
+    return recurring.create(user, master_id, service_id, _parse_date(date), _parse_time(start_time),
+                            every_weeks, _parse_date(end_date) if end_date else None)
+
+
+def my_recurring(user) -> dict:
+    from apps.bookings import recurring
+
+    return {"recurring": recurring.list_mine(user)}
+
+
+def stop_recurring(user, recurring_id: int) -> dict:
+    from apps.bookings import recurring
+
+    return recurring.stop(user, recurring_id)

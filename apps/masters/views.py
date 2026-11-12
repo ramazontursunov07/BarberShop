@@ -1,13 +1,16 @@
 from django.db import transaction
 from django.db.models import Avg, Count
 from django.shortcuts import get_object_or_404
-from rest_framework import generics, permissions
-from rest_framework.exceptions import ValidationError
+from datetime import date as date_cls
+
+from rest_framework import generics, permissions, status
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.shops.permissions import IsOwnerRole
 
+from . import dayoff
 from .models import Master, WorkSchedule
 from .serializers import MasterSerializer, MasterUpdateSerializer, ScheduleSerializer
 
@@ -93,3 +96,51 @@ class MasterScheduleView(APIView):
                 [WorkSchedule(master=master, **row) for row in serializer.validated_data]
             )
         return Response(ScheduleSerializer(master.schedules.all(), many=True).data)
+
+
+class MasterDaysOffView(APIView):
+    """Usta (yoki egasi): kasal/dam olish kuni.
+
+    GET  -> kelgusi dam olish kunlari
+    POST {"date": "2026-11-20", "reason": "kasal"} -> kun belgilanadi, shu kundagi bronlar bekor qilinadi,
+         mijozlarga Telegram xabar ketadi
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _master(self, request, pk):
+        master = get_object_or_404(Master.objects.select_related("shop", "user"), pk=pk)
+        if not dayoff.can_manage(request.user, master):
+            raise PermissionDenied("Bu ustaning jadvalini ko'rishga ruxsat yo'q")
+        return master
+
+    def get(self, request, pk):
+        from django.utils import timezone
+
+        master = self._master(request, pk)
+        rows = master.days_off.filter(date__gte=timezone.localdate())
+        return Response([{"date": r.date.isoformat(), "reason": r.reason} for r in rows])
+
+    def post(self, request, pk):
+        master = self._master(request, pk)
+        try:
+            day = date_cls.fromisoformat(str(request.data.get("date", "")))
+        except ValueError:
+            raise ValidationError({"date": "YYYY-MM-DD formatida kiriting"})
+        try:
+            result = dayoff.mark_day_off(request.user, master, day, str(request.data.get("reason", "")))
+        except dayoff.DayOffError as exc:
+            raise ValidationError({"detail": str(exc)})
+        return Response(result, status=status.HTTP_201_CREATED)
+
+
+class MasterDayOffDeleteView(MasterDaysOffView):
+    def delete(self, request, pk, day):
+        master = self._master(request, pk)
+        try:
+            day = date_cls.fromisoformat(day)
+        except ValueError:
+            raise ValidationError({"date": "YYYY-MM-DD formatida kiriting"})
+        if not dayoff.remove_day_off(request.user, master, day):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)

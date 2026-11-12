@@ -12,7 +12,8 @@ import httpx
 from aiogram import Bot, Dispatcher, F
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandStart
-from aiogram.types import InputMediaPhoto, KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.types import (CallbackQuery, InputMediaPhoto, KeyboardButton, Message, ReplyKeyboardMarkup,
+                           ReplyKeyboardRemove)
 
 from .api import ApiError, BackendClient, NotLinked
 from .config import load_settings
@@ -44,6 +45,8 @@ WELCOME = (
     "Oddiy gapiring, masalan: «Ertaga kechqurun soch olish kerak, Jasur akaga». "
     "Ovozli xabar ham yuborishingiz mumkin 🎤\n"
     "Selfi yuborsangiz, yuz shakliga mos soch turmagini tavsiya qilaman 📸\n\n"
+    "/yaqin: eng yaqin sartaroshxonalar 📍\n"
+    "Hoziroq kelmoqchi bo'lsangiz «navbat bormi?» deb yozing.\n"
     "/reset: suhbatni yangidan boshlash"
 )
 ASK_CONTACT = "Boshlash uchun pastdagi tugma orqali telefon raqamingizni yuboring."
@@ -248,6 +251,74 @@ async def on_photo(message: Message, bot: Bot) -> None:
             return
         await message.answer(format_hairstyles(data))
         await send_hairstyle_photos(message, [h["name"] for h in data["hairstyles"]])
+
+
+LOCATION_KEYBOARD = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text="📍 Joylashuvimni yuborish", request_location=True)]],
+    resize_keyboard=True,
+    one_time_keyboard=True,
+)
+
+
+@dp.message(Command("yaqin"))
+async def on_nearby_command(message: Message) -> None:
+    await message.answer("Eng yaqin sartaroshxonalarni topish uchun joylashuvingizni yuboring.",
+                         reply_markup=LOCATION_KEYBOARD)
+
+
+def format_nearby(shops: list[dict]) -> str:
+    if not shops:
+        return "Yaqin atrofda (10 km) sartaroshxona topilmadi."
+    lines = ["📍 Eng yaqin sartaroshxonalar:"]
+    for s in shops:
+        rating = f" ⭐{s['rating']}" if s.get("rating") else ""
+        lines.append(f"\n{s['name']} — {s['distance_km']} km{rating}\n{s['address']}, {s['opens_at']}–{s['closes_at']}\n"
+                     f"📞 {s['phone']}")
+    lines.append("\nBron qilish uchun yozing, masalan: «ertaga kechqurun soch olish»")
+    return "\n".join(lines)
+
+
+@dp.message(F.location)
+async def on_location(message: Message) -> None:
+    try:
+        shops = await backend.nearby_shops(message.location.latitude, message.location.longitude)
+    except (ApiError, httpx.HTTPError):
+        logger.exception("nearby: backend xatosi")
+        await message.answer("Xizmat vaqtincha ishlamayapti, keyinroq urinib ko'ring.", reply_markup=ReplyKeyboardRemove())
+        return
+    await message.answer(format_nearby(shops), reply_markup=ReplyKeyboardRemove())
+
+
+@dp.callback_query(F.data.startswith("rate:"))
+async def on_rate(call: CallbackQuery) -> None:
+    """Xizmatdan keyingi baho tugmalari: callback_data = rate:<booking_id>:<1-5>."""
+    try:
+        _, booking_id, rating = call.data.split(":")
+        booking_id, rating = int(booking_id), int(rating)
+    except ValueError:
+        await call.answer()
+        return
+    try:
+        token = await backend.get_token(call.from_user.id)
+        await backend.post_review(token, booking_id, rating)
+    except NotLinked:
+        await call.answer("Avval raqamingizni yuboring (/start)", show_alert=True)
+        return
+    except ApiError as exc:
+        # Masalan, sharh allaqachon yozilgan
+        await call.answer("Bu bronga baho allaqachon berilgan" if exc.status == 400 else "Xatolik, keyinroq urinib ko'ring",
+                          show_alert=True)
+        return
+    except httpx.HTTPError:
+        logger.exception("rate: backend xatosi")
+        await call.answer("Xizmat vaqtincha ishlamayapti", show_alert=True)
+        return
+    await call.answer("Rahmat!")
+    if call.message:
+        try:
+            await call.message.edit_text(f"Rahmat! Bahoyingiz: {'⭐' * rating}")
+        except TelegramAPIError:
+            pass
 
 
 @dp.message(F.text)

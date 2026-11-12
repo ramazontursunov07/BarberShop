@@ -26,6 +26,8 @@ class Notification(models.Model):
         REMINDER = "reminder", "Bron eslatmasi"
         WINBACK = "winback", "Mijozni qaytarish"
         RISK_REMINDER = "risk24h", "Xavfli bron: erta eslatma"
+        REVIEW_REQUEST = "review", "Sharh so'rovi"
+        DAY_OFF = "dayoff", "Usta dam olish kuni: mijozga xabar"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")
     booking = models.ForeignKey("bookings.Booking", null=True, blank=True, on_delete=models.CASCADE,

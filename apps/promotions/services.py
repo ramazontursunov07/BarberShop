@@ -165,10 +165,10 @@ def check_certificate(code: str) -> dict:
 # ------------------------------------------------------------------ asosiy hisob
 
 def quote(user, service, start_local, promo_code: str = "", certificate_code: str = "",
-          lock: bool = False) -> Quote:
+          lock: bool = False, extra_price: int = 0) -> Quote:
     """Bron narxini hisoblaydi. lock=True: bron yaratish tranzaksiyasi ichida promokod/sertifikat qatorlarini qulflaydi."""
     shop_id = service.shop_id
-    base = int(service.price)
+    base = int(service.price) + int(extra_price)  # extra_price: bir tashrifdagi qo'shimcha xizmatlar narxi
 
     # nomzodlar: (tur, yangi narx, promo, sodiqlik)
     candidates: list[tuple[str, int, PromoCode | None, bool]] = []

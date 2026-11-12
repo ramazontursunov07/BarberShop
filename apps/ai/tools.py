@@ -57,6 +57,8 @@ TOOLS = [
                 "master_id": {"type": "integer"},
                 "service_id": {"type": "integer"},
                 "date": {"type": "string", "description": "YYYY-MM-DD"},
+                "extra_service_ids": {"type": "array", "items": {"type": "integer"},
+                                      "description": "Ixtiyoriy: shu tashrifda qo'shimcha xizmatlar (masalan soch + soqol), eng ko'pi 3 ta"},
             },
             "required": ["master_id", "service_id", "date"],
         },
@@ -80,6 +82,8 @@ TOOLS = [
                     "description": "ertalab=morning, kunduzi/tushdan keyin=afternoon, kechqurun=evening",
                 },
                 "preferred_time": {"type": "string", "description": "Ixtiyoriy: istalgan vaqt, HH:MM"},
+                "extra_service_ids": {"type": "array", "items": {"type": "integer"},
+                                      "description": "Ixtiyoriy: shu tashrifda qo'shimcha xizmatlar (masalan soch + soqol), eng ko'pi 3 ta"},
             },
             "required": ["service_id", "date"],
         },
@@ -135,9 +139,97 @@ TOOLS = [
                 "start_time": {"type": "string", "description": "HH:MM"},
                 "promo_code": {"type": "string", "description": "Ixtiyoriy: mijoz aytgan promokod"},
                 "certificate_code": {"type": "string", "description": "Ixtiyoriy: mijoz aytgan sovg'a sertifikati kodi"},
+                "extra_service_ids": {"type": "array", "items": {"type": "integer"},
+                                      "description": "Ixtiyoriy: shu tashrifda qo'shimcha xizmatlar (masalan soch + soqol), eng ko'pi 3 ta"},
             },
             "required": ["master_id", "service_id", "date", "start_time"],
         },
+    },
+    {
+        "name": "reschedule_booking",
+        "description": (
+            "Mavjud bronni boshqa kun/vaqtga (xohlasa boshqa ustaga) ko'chiradi. Avval my_bookings dan id ol, "
+            "yangi vaqtni find_best_slots/get_available_slots bilan tekshir, mijoz tasdiqlagandan KEYIN chaqir."
+        ),
+        "input_schema": {"type": "object", "properties": {
+            "booking_id": {"type": "integer"}, "date": {"type": "string", "description": "YYYY-MM-DD"},
+            "start_time": {"type": "string", "description": "HH:MM"},
+            "master_id": {"type": "integer", "description": "Ixtiyoriy: boshqa usta"}},
+            "required": ["booking_id", "date", "start_time"]},
+    },
+    {
+        "name": "join_waitlist",
+        "description": (
+            "Kerakli kunda bo'sh vaqt yo'q bo'lsa, mijozni kutish ro'yxatiga yozadi: vaqt bo'shasa unga Telegram "
+            "xabar boradi. Bo'sh vaqt bor bo'lsa chaqirma, bron qil."
+        ),
+        "input_schema": {"type": "object", "properties": {
+            "service_id": {"type": "integer"}, "date": {"type": "string", "description": "YYYY-MM-DD"},
+            "master_id": {"type": "integer", "description": "Ixtiyoriy: aniq usta"},
+            "from_time": {"type": "string", "description": "Ixtiyoriy: shu vaqtdan, HH:MM"},
+            "to_time": {"type": "string", "description": "Ixtiyoriy: shu vaqtgacha, HH:MM"}},
+            "required": ["service_id", "date"]},
+    },
+    {
+        "name": "quote_price",
+        "description": (
+            "Bron qilmasdan yakuniy narxni hisoblaydi: chegirma, promokod, sertifikat va qo'shimcha xizmatlar bilan. "
+            "'Qancha tushadi?', 'promokod ishlaydimi?' savollari uchun."
+        ),
+        "input_schema": {"type": "object", "properties": {
+            "service_id": {"type": "integer"}, "date": {"type": "string", "description": "YYYY-MM-DD"},
+            "start_time": {"type": "string", "description": "HH:MM"},
+            "promo_code": {"type": "string"}, "certificate_code": {"type": "string"},
+                "extra_service_ids": {"type": "array", "items": {"type": "integer"},
+                                      "description": "Ixtiyoriy: shu tashrifda qo'shimcha xizmatlar (masalan soch + soqol), eng ko'pi 3 ta"},
+            },
+            "required": ["service_id", "date", "start_time"]},
+    },
+    {
+        "name": "join_queue",
+        "description": (
+            "Mijoz 'hoziroq kelaman', 'navbat bormi' desa: jonli navbatga qo'yadi va taxminiy kutish vaqtini aytadi. "
+            "Sartaroshxona hozir ochiq bo'lishi kerak. Mijoz tasdiqlagandan KEYIN chaqir."
+        ),
+        "input_schema": {"type": "object", "properties": {
+            "shop_id": {"type": "integer"}, "service_id": {"type": "integer"},
+            "master_id": {"type": "integer", "description": "Ixtiyoriy: aniq usta"}},
+            "required": ["shop_id", "service_id"]},
+    },
+    {
+        "name": "queue_status",
+        "description": "Mijozning jonli navbatdagi o'rni va taxminiy kutish vaqti ('navbatim qachon?').",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "leave_queue",
+        "description": "Mijozni jonli navbatdan chiqaradi ('kelolmayman, navbatdan chiqar').",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "create_recurring_booking",
+        "description": (
+            "Doimiy bron: 'har 2 haftada shu ustaga, shu soatga'. Birinchi uchrashuv darhol bron qilinadi, "
+            "keyingilari avtomatik. Mijoz usta, xizmat, sana, soat va oraliqni tasdiqlagandan KEYIN chaqir."
+        ),
+        "input_schema": {"type": "object", "properties": {
+            "master_id": {"type": "integer"}, "service_id": {"type": "integer"},
+            "date": {"type": "string", "description": "Birinchi uchrashuv sanasi, YYYY-MM-DD"},
+            "start_time": {"type": "string", "description": "HH:MM"},
+            "every_weeks": {"type": "integer", "description": "Necha haftada bir (1-12), standart 2"},
+            "end_date": {"type": "string", "description": "Ixtiyoriy: shu sanagacha, YYYY-MM-DD"}},
+            "required": ["master_id", "service_id", "date", "start_time"]},
+    },
+    {
+        "name": "my_recurring",
+        "description": "Mijozning doimiy bronlari ro'yxati (id bilan).",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "stop_recurring",
+        "description": "Doimiy bronni to'xtatadi. id ni my_recurring dan ol; mijoz tasdiqlagandan KEYIN chaqir.",
+        "input_schema": {"type": "object", "properties": {"recurring_id": {"type": "integer"}},
+                         "required": ["recurring_id"]},
     },
 ]
 
@@ -159,6 +251,15 @@ _FUNCS = {
     "my_recommendations": services.my_recommendations,
     "cancel_booking": services.cancel_booking,
     "search_shop_info": _search_shop_info,
+    "reschedule_booking": services.reschedule_booking,
+    "join_waitlist": services.join_waitlist,
+    "quote_price": services.quote_price,
+    "join_queue": services.join_queue,
+    "queue_status": services.queue_status,
+    "leave_queue": services.leave_queue,
+    "create_recurring_booking": services.create_recurring_booking,
+    "my_recurring": services.my_recurring,
+    "stop_recurring": services.stop_recurring,
 }
 
 

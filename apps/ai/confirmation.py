@@ -6,7 +6,8 @@ create_booking ni chaqirgan. Prompt'ga ishonish yetarli emas, shuning uchun to's
 """
 import re
 
-GUARDED_TOOLS = {"create_booking", "cancel_booking"}
+GUARDED_TOOLS = {"create_booking", "cancel_booking", "reschedule_booking", "join_queue",
+                 "create_recurring_booking", "stop_recurring"}
 
 REJECT_MESSAGE = (
     "TASDIQ YO'Q: mijoz bu amalni hali aniq tasdiqlamagan, shuning uchun bajarilmadi. Hozir tool chaqirma. "
