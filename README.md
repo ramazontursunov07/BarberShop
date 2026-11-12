@@ -120,6 +120,23 @@ Egasi API'lari faqat o'z sartaroshxonasi uchun ishlaydi (`owner` roli).
 - **FAQ** (`apps/faq`): egasi savol-javob yozadi, mijoz ro'yxatni ko'radi, AI agent ham shundan javob beradi (`index_knowledge` ni qayta ishga tushiring).
 - **Reyting**: sartaroshxona va usta ro'yxatida `avg_rating` va `reviews_count`.
 
+## Kundalik operatsiyalar (hayotiy funksiyalar)
+
+| Funksiya | Qanday ishlaydi |
+|---|---|
+| Usta/egaga Telegram xabar | Yangi bron, bekor qilish, ko'chirish ustaga; usta/egasi bekor qilsa mijozga xabar (`apps/bookings/events.py`) |
+| Kunlik xulosa | `python manage.py send_daily_digest` — ustaga bugungi jadval, egasiga umumiy xulosa (cron, ertalab) |
+| Usta kasal/dam olish kuni | `POST /api/masters/<id>/days-off/ {"date","reason"}` — shu kundagi bronlar bekor, mijozlarga xabar; `DELETE /api/masters/<id>/days-off/<sana>/` |
+| Bir tashrifda bir necha xizmat | `extra_services: [id,...]` (eng ko'pi 3): slotlar va narx umumiy davomiylik/narx bo'yicha |
+| Jonli navbat (walk-in) | `POST /api/bookings/queue/`, `GET .../queue/staff/?shop=`, `POST .../queue/call-next/`, `POST .../queue/<id>/finish/` |
+| Kassa va usta ulushi | `POST /api/bookings/<id>/status/ {"status":"completed","payment_method":"cash"}`; hisobot `GET /api/insights/payroll/?shop=&from=&to=[&export=csv]`; ulush `Master.commission_percent` |
+| Sharh so'rovi | `python manage.py send_review_requests` — xizmatdan 2 soat keyin 1–5 ⭐ tugmalari, bot `rate:` callback orqali sharh yozadi |
+| Yaqin sartaroshxonalar | `GET /api/shops/nearby/?lat=&lng=`; botda `/yaqin` (joylashuv yuboriladi) |
+| Doimiy bron | `POST /api/bookings/recurring/`; `python manage.py book_recurring` (cron, kuniga 1) kelgusi 2 haftani bron qiladi |
+| AI agent tool'lari | `reschedule_booking`, `join_waitlist`, `quote_price`, `join_queue`, `queue_status`, `leave_queue`, `create_recurring_booking`, `my_recurring`, `stop_recurring` (o'zgartiruvchilari tasdiq to'sig'i ostida) |
+
+Cron namunasi: `send_reminders` har 10 daqiqada, `send_review_requests` har 30 daqiqada, `book_recurring` va `send_daily_digest` kuniga 1 marta.
+
 ## Telegram bot
 
 Mijoz botga yozadi, gap `/api/ai/chat/` ga uzatiladi. Birinchi marta o'z kontaktini yuboradi (Telegram telefonni tasdiqlaydi),
