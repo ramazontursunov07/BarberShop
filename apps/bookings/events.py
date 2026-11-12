@@ -1,4 +1,3 @@
-
 """Bron hodisalari haqida Telegram xabarlari: ustaga (yangi bron, bekor, ko'chirish) va mijozga (usta bekor qilsa).
 
 Hammasi tranzaksiya muvaffaqiyatli tugagandan keyin (on_commit) va xato bo'lsa ham asosiy amalni buzmasdan ishlaydi.
@@ -57,6 +56,13 @@ def notify_master_cancelled(booking) -> None:
     ))
 
 
+def notify_master_running_late(booking, minutes: int) -> None:
+    _after_commit(lambda: _send(
+        booking.master.user,
+        f"⏱ Mijoz ~{minutes} daqiqa kechikadi: {when(booking)}\n{_client_line(booking)}, {services_label(booking)}",
+    ))
+
+
 def notify_master_rescheduled(booking, old_when: str, old_master_user=None) -> None:
     """old_master_user: bron boshqa ustaga ko'chirilgan bo'lsa, eski ustaga ham xabar boradi."""
     def run():
@@ -95,4 +101,3 @@ def notify_client_called(ticket) -> None:
         f"✅ Navbatingiz keldi! {ticket.shop.name}da usta {master_name(ticket.master)} sizni kutyapti "
         f"({ticket.service.name}).",
     ))
-    

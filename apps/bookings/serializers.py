@@ -17,7 +17,7 @@ class BookingSerializer(serializers.ModelSerializer):
         model = Booking
         fields = ("id", "shop", "client_name", "client_phone", "master", "master_name", "service", "service_name",
                   "start_time", "end_time", "price", "discount_amount", "loyalty_applied",
-                  "certificate_amount", "payment_method", "status", "created_at")
+                  "certificate_amount", "payment_method", "status", "client_confirmed_at", "late_minutes", "created_at")
         read_only_fields = fields
 
     def get_service_name(self, obj):
@@ -46,6 +46,11 @@ class BookingCreateSerializer(serializers.Serializer):
     certificate_code = serializers.CharField(required=False, allow_blank=True, default="")
     extra_services = serializers.ListField(child=serializers.IntegerField(), required=False, default=list,
                                            max_length=3)
+
+
+class RespondSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(choices=["confirm", "late"])
+    minutes = serializers.ChoiceField(choices=[10, 20, 30], required=False, default=10)
 
 
 class RescheduleSerializer(serializers.Serializer):

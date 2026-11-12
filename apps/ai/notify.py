@@ -12,6 +12,15 @@ from .llm import conf
 logger = logging.getLogger(__name__)
 
 
+def reminder_markup(booking_id: int, with_late: bool = True) -> dict:
+    """Eslatma tagidagi tugmalar. callback_data: rem:<bron_id>:<c|l|x> (bot shuni qayta ishlaydi)."""
+    rows = [[{"text": "✅ Kelaman", "callback_data": f"rem:{booking_id}:c"}]]
+    if with_late:
+        rows.append([{"text": "⏱ 10 daqiqa kechikaman", "callback_data": f"rem:{booking_id}:l"}])
+    rows.append([{"text": "❌ Bekor qilaman", "callback_data": f"rem:{booking_id}:x"}])
+    return {"inline_keyboard": rows}
+
+
 def send_telegram(chat_id: int, text: str, reply_markup: dict | None = None) -> bool:
     token = conf("TELEGRAM_BOT_TOKEN")
     if not token:

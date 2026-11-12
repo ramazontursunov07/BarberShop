@@ -4,6 +4,7 @@ from .views import (
     BookingCancelView,
     BookingRescheduleView,
     BookingListCreateView,
+    BookingRespondView,
     BookingStatusView,
     QueueCallNextView,
     QueueFinishView,
@@ -30,6 +31,7 @@ urlpatterns = [
     path("waitlist/", WaitlistListCreateView.as_view(), name="waitlist"),
     path("waitlist/<int:pk>/", WaitlistDetailView.as_view(), name="waitlist-detail"),
     path("<int:pk>/cancel/", BookingCancelView.as_view(), name="booking-cancel"),
+    path("<int:pk>/respond/", BookingRespondView.as_view(), name="booking-respond"),
     path("<int:pk>/reschedule/", BookingRescheduleView.as_view(), name="booking-reschedule"),
     path("<int:pk>/status/", BookingStatusView.as_view(), name="booking-status"),
 ]

@@ -105,6 +105,57 @@ def cancel_by_client(user, booking_id: int) -> dict:
     return booking_to_dict(booking)
 
 
+LATE_OPTIONS = (10, 20, 30)         # mijoz tanlay oladigan kechikish (daqiqa)
+LATE_NOTICE_WINDOW = timedelta(hours=3)  # kechikish haqida bron vaqtidan eng ko'pi bilan shuncha oldin xabar beriladi
+LATE_GRACE = timedelta(minutes=30)   # bron vaqti o'tgandan keyin ham shuncha vaqt "kechikaman" deyish mumkin
+
+
+def respond_by_client(user, booking_id: int, action: str, minutes: int = 10) -> dict:
+    """Mijoz eslatmadagi tugma orqali javob beradi: action = "confirm" (kelaman) yoki "late" (N daqiqa kechikaman).
+
+    Faqat o'z bronida; boshqa odamning broni "topilmadi" deb qaytadi. Takroriy bosish xavfsiz (idempotent):
+    ustaga xabar faqat kechikish vaqti o'zgargandagina boradi. Bekor qilish uchun cancel_by_client ishlatiladi.
+    """
+    if action not in ("confirm", "late"):
+        raise BookingError("Noma'lum amal")
+    if action == "late" and minutes not in LATE_OPTIONS:
+        raise BookingError(f"Kechikish {', '.join(map(str, LATE_OPTIONS))} daqiqadan biri bo'lishi kerak")
+
+    notify = False
+    with transaction.atomic():
+        booking = (
+            _with_relations(Booking.objects.select_for_update())
+            .filter(pk=booking_id, client=user)
+            .first()
+        )
+        if booking is None:
+            raise BookingError("Bron topilmadi")
+        if booking.status not in ACTIVE_STATUSES:
+            raise BookingError(f"Bu bron endi faol emas (holati: {booking.status})")
+
+        now = timezone.now()
+        if action == "confirm":
+            if booking.start_time <= now:
+                raise BookingError("Bron vaqti o'tib bo'lgan")
+            if booking.client_confirmed_at is None:
+                booking.client_confirmed_at = now
+                booking.save(update_fields=["client_confirmed_at"])
+        else:
+            if booking.start_time - now > LATE_NOTICE_WINDOW:
+                raise BookingError("Kechikish haqida bron vaqtiga yaqinroq xabar bering")
+            if now - booking.start_time > LATE_GRACE:
+                raise BookingError("Bron vaqti o'tib ketgan, iltimos sartaroshxonaga qo'ng'iroq qiling")
+            if booking.late_minutes != minutes:
+                booking.late_minutes = minutes
+                notify = True
+            if booking.client_confirmed_at is None:  # kechikaman degan mijoz kelyapti
+                booking.client_confirmed_at = now
+            booking.save(update_fields=["late_minutes", "client_confirmed_at"])
+        if notify:
+            events.notify_master_running_late(booking, minutes)
+    return {**booking_to_dict(booking), "client_confirmed": True, "late_minutes": booking.late_minutes}
+
+
 def reschedule_by_client(user, booking_id: int, date: str, start_time: str, master_id: int | None = None) -> dict:
     """Mijoz o'z bronini boshqa vaqtga (xohlasa boshqa ustaga, shu sartaroshxonada) ko'chiradi.
 

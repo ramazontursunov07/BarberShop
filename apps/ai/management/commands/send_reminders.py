@@ -12,7 +12,7 @@ from django.db import IntegrityError
 from django.utils import timezone
 
 from apps.ai.models import Notification
-from apps.ai.notify import send_telegram
+from apps.ai.notify import reminder_markup, send_telegram
 from apps.bookings.models import Booking
 from apps.bookings.services import ACTIVE_STATUSES, CANCEL_BEFORE, SHOP_TZ, master_name
 from apps.insights.noshow import build_context, risk_score
@@ -24,8 +24,7 @@ def build_reminder(booking: Booking) -> str:
     return (
         f"⏰ Eslatma: bugun soat {start:%H:%M} da {booking.master.shop.name}da "
         f"{master_name(booking.master)} ustaga «{booking.service.name}» uchun yozilgansiz.\n\n"
-        f"Kela olmasangiz, iltimos, kamida {cancel_hours} soat oldin bekor qiling: "
-        f"shunchaki «bronimni bekor qil» deb yozing."
+        f"Pastdagi tugmalardan birini bosing. Kela olmasangiz, kamida {cancel_hours} soat oldin bekor qiling."
     )
 
 
@@ -35,8 +34,8 @@ def build_risk_reminder(booking: Booking) -> str:
     return (
         f"📅 Bron eslatmasi: {start:%d.%m} soat {start:%H:%M} da {booking.master.shop.name}da "
         f"{master_name(booking.master)} ustaga «{booking.service.name}» uchun yozilgansiz.\n\n"
-        f"Kela olmasangiz, iltimos, kamida {cancel_hours} soat oldin bekor qiling: "
-        f"shunchaki «bronimni bekor qil» deb yozing, shunda bu vaqtni boshqa mijoz oladi."
+        f"Kelishingizni tasdiqlang yoki kela olmasangiz, kamida {cancel_hours} soat oldin bekor qiling: "
+        f"shunda bu vaqtni boshqa mijoz oladi."
     )
 
 
@@ -74,7 +73,8 @@ class Command(BaseCommand):
                 )
             except IntegrityError:
                 continue
-            if send_telegram(booking.client.telegram_id, build_reminder(booking)):
+            if send_telegram(booking.client.telegram_id, build_reminder(booking),
+                             reply_markup=reminder_markup(booking.id, with_late=True)):
                 sent += 1
             else:
                 note.delete()  # keyingi ishga tushirishda qayta urinadi
@@ -116,7 +116,9 @@ class Command(BaseCommand):
                 )
             except IntegrityError:
                 continue
-            if send_telegram(booking.client.telegram_id, build_risk_reminder(booking)):
+            # 24 soat oldin "kechikaman" mantiqsiz: faqat kelaman/bekor tugmalari
+            if send_telegram(booking.client.telegram_id, build_risk_reminder(booking),
+                             reply_markup=reminder_markup(booking.id, with_late=False)):
                 sent += 1
             else:
                 note.delete()

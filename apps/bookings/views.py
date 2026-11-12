@@ -18,6 +18,7 @@ from .serializers import (
     BookingSerializer,
     BookingStatusSerializer,
     RescheduleSerializer,
+    RespondSerializer,
     SlotQuerySerializer,
     WaitlistCreateSerializer,
     WaitlistEntrySerializer,
@@ -29,6 +30,7 @@ from .services import (
     cancel_by_client,
     change_status,
     reschedule_by_client,
+    respond_by_client,
 )
 
 
@@ -117,6 +119,21 @@ class BookingCancelView(APIView):
             code = status.HTTP_404_NOT_FOUND if str(exc) == "Bron topilmadi" else status.HTTP_400_BAD_REQUEST
             return Response({"detail": str(exc)}, status=code)
         return Response(booking)
+
+
+class BookingRespondView(APIView):
+    """Eslatmadagi tugmalar: {"action": "confirm"} (kelaman) yoki {"action": "late", "minutes": 10} (kechikaman)."""
+
+    def post(self, request, pk):
+        serializer = RespondSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        try:
+            result = respond_by_client(request.user, pk, data["action"], int(data["minutes"]))
+        except BookingError as exc:
+            code = status.HTTP_404_NOT_FOUND if str(exc) == "Bron topilmadi" else status.HTTP_400_BAD_REQUEST
+            return Response({"detail": str(exc)}, status=code)
+        return Response(result)
 
 
 class BookingRescheduleView(APIView):

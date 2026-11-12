@@ -93,5 +93,24 @@ class BackendClient:
         if resp.status_code not in (200, 201):
             raise ApiError(resp.status_code, _detail(resp))
 
+    async def respond_booking(self, token: str, booking_id: int, action: str, minutes: int = 10) -> dict:
+        resp = await self._http.post(
+            f"/api/bookings/{booking_id}/respond/",
+            json={"action": action, "minutes": minutes},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        if resp.status_code != 200:
+            raise ApiError(resp.status_code, _detail(resp))
+        return resp.json()
+
+    async def cancel_booking(self, token: str, booking_id: int) -> dict:
+        resp = await self._http.post(
+            f"/api/bookings/{booking_id}/cancel/",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        if resp.status_code != 200:
+            raise ApiError(resp.status_code, _detail(resp))
+        return resp.json()
+
     async def close(self) -> None:
         await self._http.aclose()

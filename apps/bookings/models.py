@@ -40,6 +40,9 @@ class Booking(models.Model):
     extra_services = models.ManyToManyField(Service, blank=True, related_name="extra_in_bookings")
     payment_method = models.CharField(max_length=10, choices=PaymentMethod.choices, blank=True, default="",
                                       help_text="Bajarilgandan keyin: naqd, karta yoki o'tkazma")
+    # Mijoz eslatmadagi tugma orqali javob bergan: "kelaman" va "N daqiqa kechikaman"
+    client_confirmed_at = models.DateTimeField(null=True, blank=True, help_text="Mijoz kelishini tasdiqlagan vaqt")
+    late_minutes = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Mijoz kechikishini aytgan (daqiqa)")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

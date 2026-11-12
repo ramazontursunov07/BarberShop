@@ -12,8 +12,8 @@ import httpx
 from aiogram import Bot, Dispatcher, F
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandStart
-from aiogram.types import (CallbackQuery, InputMediaPhoto, KeyboardButton, Message, ReplyKeyboardMarkup,
-                           ReplyKeyboardRemove)
+from aiogram.types import (CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto,
+                           KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove)
 
 from .api import ApiError, BackendClient, NotLinked
 from .config import load_settings
@@ -319,6 +319,82 @@ async def on_rate(call: CallbackQuery) -> None:
             await call.message.edit_text(f"Rahmat! Bahoyingiz: {'⭐' * rating}")
         except TelegramAPIError:
             pass
+
+
+def _rem_markup(booking_id: int, *codes: str) -> InlineKeyboardMarkup:
+    """Eslatma tugmalari: c = kelaman, x = bekor qilaman, xy/xn = bekor qilishni tasdiqlash/qaytarish."""
+    labels = {"c": "✅ Kelaman", "x": "❌ Bekor qilaman", "xy": "Ha, bekor qil", "xn": "Yo'q, qoldiraman"}
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=labels[c], callback_data=f"rem:{booking_id}:{c}") for c in codes]
+    ])
+
+
+CANCEL_QUESTION = "\n\nRostdan bekor qilasizmi?"
+
+
+async def _rem_edit(call: CallbackQuery, text: str, markup: InlineKeyboardMarkup | None) -> None:
+    if call.message:
+        try:
+            await call.message.edit_text(text, reply_markup=markup)
+        except TelegramAPIError:
+            logger.warning("rem: xabarni tahrirlab bo'lmadi")
+
+
+@dp.callback_query(F.data.startswith("rem:"))
+async def on_reminder(call: CallbackQuery) -> None:
+    """Eslatma tugmalari: rem:<bron_id>:<c|l|x|xy|xn>. Bron faqat shu Telegram egasining o'ziniki bo'lsa o'zgaradi."""
+    try:
+        _, booking_id, code = call.data.split(":")
+        booking_id = int(booking_id)
+    except ValueError:
+        await call.answer()
+        return
+    if code not in ("c", "l", "x", "xy", "xn"):
+        await call.answer()
+        return
+
+    base = ((call.message.text or "") if call.message else "").split(CANCEL_QUESTION)[0]
+
+    if code == "x":  # tasodifan bosib yubormaslik uchun avval so'raymiz
+        await call.answer()
+        await _rem_edit(call, base + CANCEL_QUESTION, _rem_markup(booking_id, "xy", "xn"))
+        return
+    if code == "xn":
+        await call.answer("Bron saqlanib qoldi")
+        await _rem_edit(call, base, _rem_markup(booking_id, "c", "x"))
+        return
+
+    try:
+        token = await backend.get_token(call.from_user.id)
+        if code == "xy":
+            await backend.cancel_booking(token, booking_id)
+        else:
+            await backend.respond_booking(token, booking_id, "confirm" if code == "c" else "late", 10)
+    except NotLinked:
+        await call.answer("Avval raqamingizni yuboring (/start)", show_alert=True)
+        return
+    except ApiError as exc:
+        # Masalan: bekor qilish muddati o'tgan, bron allaqachon bekor qilingan
+        await call.answer(exc.detail[:190] if exc.status in (400, 404) else "Xatolik, keyinroq urinib ko'ring",
+                          show_alert=True)
+        if code == "xy":
+            await _rem_edit(call, base, _rem_markup(booking_id, "c", "x"))
+        return
+    except httpx.HTTPError:
+        logger.exception("rem: backend xatosi")
+        await call.answer("Xizmat vaqtincha ishlamayapti", show_alert=True)
+        return
+
+    if code == "c":
+        await call.answer("Rahmat!")
+        await _rem_edit(call, base + "\n\n✅ Rahmat, sizni kutamiz!", _rem_markup(booking_id, "x"))
+    elif code == "l":
+        await call.answer("Ustaga xabar berdik")
+        await _rem_edit(call, base + "\n\n⏱ Ustaga 10 daqiqa kechikishingiz haqida xabar berdik. Iltimos, undan ortiq kechikmang.",
+                        _rem_markup(booking_id, "x"))
+    else:
+        await call.answer("Bron bekor qilindi")
+        await _rem_edit(call, base + "\n\n❌ Bron bekor qilindi.", None)
 
 
 @dp.message(F.text)
