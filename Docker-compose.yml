@@ -1,0 +1,75 @@
+# Ishga tushirish:  cp .env.example .env  (to'ldiring)  ->  docker compose up -d --build
+# Birinchi marta: docker compose exec web python manage.py createsuperuser
+x-app: &app
+  build: .
+  env_file: .env
+  environment:
+    DATABASE_URL: postgres://barber:${POSTGRES_PASSWORD}@db:5432/barber
+    REDIS_URL: redis://redis:6379/0
+    API_BASE_URL: http://web:8000
+  depends_on:
+    db: {condition: service_healthy}
+    redis: {condition: service_started}
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: barber
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: barber
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barber -d barber"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  web:
+    <<: *app
+    command: sh -c "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"
+    volumes: [media:/app/media, chroma:/app/chroma_db]
+    expose: ["8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/')"]
+      interval: 15s
+      retries: 5
+
+  proxy:
+    image: caddy:2-alpine
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - media:/srv/media:ro
+      - caddy_data:/data
+    depends_on:
+      web: {condition: service_healthy}
+    restart: unless-stopped
+
+  worker:
+    <<: *app
+    command: celery -A config worker -l info --concurrency 2
+    volumes: [media:/app/media, chroma:/app/chroma_db]
+
+  beat:
+    <<: *app
+    command: celery -A config beat -l info --schedule /tmp/celerybeat-schedule
+
+  bot:
+    <<: *app
+    command: python -m telegram_bot.main
+    depends_on:
+      web: {condition: service_healthy}
+
+volumes:
+  pgdata:
+  media:
+  chroma:
+  caddy_data:

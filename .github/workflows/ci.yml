@@ -1,0 +1,25 @@
+name: tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: {POSTGRES_USER: barber, POSTGRES_PASSWORD: barber, POSTGRES_DB: barber}
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U barber" --health-interval 5s --health-retries 10
+    env:
+      SECRET_KEY: ci-secret
+      DEBUG: "True"
+      DATABASE_URL: postgres://barber:barber@localhost:5432/barber
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.13", cache: pip}
+      - run: pip install -r requirements.txt
+      - run: python manage.py check
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py test
+        

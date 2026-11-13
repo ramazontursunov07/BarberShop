@@ -18,7 +18,7 @@ def with_rating(qs):
     return qs.annotate(
         avg_rating=Avg('masters__bookings__review__rating'),
         reviews_count=Count('masters__bookings__review'),
-    )
+    ).order_by('-created_at', 'id')
 
 
 class ShopListView(generics.ListAPIView):

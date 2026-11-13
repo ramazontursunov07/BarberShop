@@ -1,0 +1,9 @@
+# DOMAIN .env dan olinadi (DNS shu serverga qaragan bo'lishi kerak: HTTPS sertifikat avtomatik olinadi)
+{$DOMAIN} {
+	encode gzip
+	handle_path /media/* {
+		root * /srv/media
+		file_server
+	}
+	reverse_proxy web:8000
+}

@@ -20,7 +20,7 @@ def _with_rating(qs):
     return qs.select_related("user", "shop").annotate(
         avg_rating=Avg("bookings__review__rating"),
         reviews_count=Count("bookings__review"),
-    )
+    ).order_by("-created_at", "id")  # annotate Meta.ordering'ni yo'qotadi: sahifalash barqaror bo'lishi uchun
 
 
 class MasterListView(generics.ListAPIView):
