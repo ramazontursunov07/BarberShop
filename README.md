@@ -147,6 +147,25 @@ python manage.py runserver          # 1-terminal
 python -m telegram_bot.main         # 2-terminal
 ```
 
+## Production'ga chiqarish (Docker)
+
+Servislar: `db` (PostgreSQL 16), `redis`, `web` (gunicorn), `worker` + `beat` (Celery), `bot` (Telegram), `proxy` (Caddy: avtomatik HTTPS va `/media/`).
+
+```bash
+cp .env.example .env        # SECRET_KEY, DOMAIN, ALLOWED_HOSTS, POSTGRES_PASSWORD, LLM/Telegram kalitlarini to'ldiring
+docker compose up -d --build
+docker compose exec web python manage.py createsuperuser
+docker compose exec web python manage.py index_knowledge   # RAG bazasini to'ldirish (bir marta)
+```
+
+- Domenning DNS'i serverga qaragan bo'lishi kerak (80 va 443 portlar ochiq): Caddy sertifikatni o'zi oladi.
+- Eslatmalar, sharh so'rovi, doimiy bron, kunlik xulosa va qaytarish xabarlari endi cron kerak emas: `beat` jadvali `config/celery.py` da.
+- `GET /health/` — baza bilan birga tekshiradi (docker healthcheck shuni ishlatadi).
+- `DATABASE_URL` bo'lmasa loyiha lokal SQLite bilan ishlaydi (`DEBUG=True` bilan, `python manage.py runserver`).
+- Zaxira nusxa: `docker compose exec db pg_dump -U barber barber > backup.sql` (kuniga bir marta cron bilan).
+- `.env` fayli hech qachon git'ga yoki zip'ga kirmasin; kalit tasodifan oshkor bo'lsa, almashtiring.
+- GitHub Actions (`.github/workflows/ci.yml`) har push'da PostgreSQL bilan testlarni ishga tushiradi.
+
 ## Texnologiyalar
 
 | Qatlam | Nima |
@@ -247,7 +266,6 @@ telegram_bot/  Telegram bot (aiogram)
 
 ## Cheklovlar va rejalar
 
-- SQLite'da bir vaqtda ikki so'rov bitta vaqtni olishi mumkin; production uchun PostgreSQL va Docker rejalashtirilgan.
+- Bir vaqtni ikki mijoz olishiga qarshi `select_for_update` (usta qatori qulflanadi) ishlatiladi; u faqat PostgreSQL'da to'liq ishlaydi, SQLite faqat lokal ishlab chiqish uchun.
 - Bepul LLM rejalarida so'rovlar soni cheklangan; baholashda `--sleep` va `--limit` ishlatiladi.
 - No-show modeli hozircha statistik (tushunarli omillar); ma'lumot to'planganda sklearn GradientBoosting bilan almashtiriladi.
-- Selfi orqali soch turmagi tavsiyasi (Computer Vision) hali yozilmagan.
