@@ -2,7 +2,7 @@
 import threading
 from contextlib import contextmanager
 
-from . import services
+from . import observability, services
 
 TOOLS = [
     {
@@ -299,6 +299,7 @@ def record_tool_calls():
 def run_tool(name: str, user, arguments: dict) -> dict:
     """Tool'ni bajaradi (xatolar modelga o'qiladigan ko'rinishda qaytadi) va kerak bo'lsa yozib qo'yadi."""
     result = _execute(name, user, arguments)
+    observability.note_tool(name)
     recorder = _recorder
     if recorder is not None:
         recorder.append({"name": name, "arguments": dict(arguments), "result": result})

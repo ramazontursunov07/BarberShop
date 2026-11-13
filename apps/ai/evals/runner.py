@@ -18,6 +18,7 @@ from apps.bookings.services import SHOP_TZ
 from apps.masters.models import Master
 from apps.services.models import Service
 
+from .. import observability
 from ..tools import record_tool_calls
 from .ratelimit import describe_error
 from .scoring import SAFETY, CaseResult, Check, score_turn
@@ -177,7 +178,8 @@ def run_case(case: dict, env: EvalEnv, runner, sleep: float = 0.0) -> CaseResult
         for turn in case["turns"]:
             say = turn["say"].format_map(_SafeDict(ctx))
             started = time.perf_counter()
-            with record_tool_calls() as calls:
+            observability.reset_last()
+            with record_tool_calls() as calls, observability.tag(f"eval:{case['id']}"):
                 try:
                     reply = runner(env.client, say, list(history))
                 except Exception as exc:
@@ -190,6 +192,10 @@ def run_case(case: dict, env: EvalEnv, runner, sleep: float = 0.0) -> CaseResult
                     return result
             result.latency_s += time.perf_counter() - started
             result.tool_calls += len(calls)
+            trace = observability.last_trace()
+            if trace is not None:
+                result.tokens += trace.total_tokens
+                result.llm_calls += len(trace.calls)
             history += [{"role": "user", "content": say}, {"role": "assistant", "content": reply}]
             result.checks += score_turn(turn.get("expect", {}), reply, calls, ids)
             result.turns.append({

@@ -13,6 +13,7 @@ import re
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from apps.ai import observability
 from apps.ai.llm import conf, get_client
 
 MAX_UPLOAD_BYTES = 4 * 1024 * 1024
@@ -136,15 +137,18 @@ def parse_detection(text: str) -> dict:
 
 def _vision_llm(jpeg: bytes) -> str:
     url = "data:image/jpeg;base64," + base64.b64encode(jpeg).decode()
-    resp = get_client().chat.completions.create(
-        model=conf("LLM_MODEL"),
-        temperature=0,
-        max_tokens=200,
-        messages=[{"role": "user", "content": [
-            {"type": "text", "text": PROMPT},
-            {"type": "image_url", "image_url": {"url": url}},
-        ]}],
-    )
+    model = conf("LLM_MODEL")
+    with observability.track("vision", "face_shape", model) as call:
+        resp = get_client().chat.completions.create(
+            model=model,
+            temperature=0,
+            max_tokens=200,
+            messages=[{"role": "user", "content": [
+                {"type": "text", "text": PROMPT},
+                {"type": "image_url", "image_url": {"url": url}},
+            ]}],
+        )
+        call.usage(resp)
     return resp.choices[0].message.content or ""
 
 

@@ -14,7 +14,7 @@ from apps.services.models import Service
 from apps.shops.models import Shop
 from apps.masters.models import Master
 
-from . import services
+from . import observability, services
 from .chunking import chunk_text
 from .llm import conf, get_client
 from .models import KnowledgeDocument
@@ -33,7 +33,9 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
         batch = texts[i:i + EMBED_BATCH]
         for attempt in range(3):
             try:
-                resp = client.embeddings.create(model=model, input=batch)
+                with observability.track("embedding", "embed", model) as call:
+                    resp = client.embeddings.create(model=model, input=batch)
+                    call.usage(resp)
                 break
             except RateLimitError:  # bepul limit: biroz kutib qayta urinamiz
                 if attempt == 2:

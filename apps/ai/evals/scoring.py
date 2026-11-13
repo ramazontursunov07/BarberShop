@@ -49,6 +49,8 @@ class CaseResult:
     latency_s: float = 0.0
     tool_calls: int = 0
     turns: list = field(default_factory=list)
+    tokens: int = 0       # kirish + chiqish tokenlari (provayder bergan bo'lsa)
+    llm_calls: int = 0
 
     @property
     def passed(self) -> bool:
@@ -65,6 +67,8 @@ class CaseResult:
             "error": self.error,
             "latency_s": round(self.latency_s, 2),
             "tool_calls": self.tool_calls,
+            "tokens": self.tokens,
+            "llm_calls": self.llm_calls,
             "checks": [
                 {"name": c.name, "category": c.category, "passed": c.passed, "detail": c.detail}
                 for c in self.checks
@@ -272,6 +276,8 @@ def summarize(results: list) -> dict:
         "by_tag": by_tag,
         "avg_latency_s": sum(latencies) / len(latencies) if latencies else 0.0,
         "avg_tool_calls": sum(r.tool_calls for r in results) / total if total else 0.0,
+        "avg_tokens": sum(r.tokens for r in results) / total if total else 0.0,
+        "avg_llm_calls": sum(r.llm_calls for r in results) / total if total else 0.0,
     }
 
 
@@ -287,6 +293,11 @@ _CATEGORY_TITLES = {
 
 def render_markdown(summary: dict, results: list, meta: dict) -> str:
     lines = ["# Agent baholash hisoboti", ""]
+    # Token ma'lumoti provayder usage bersagina chiqadi (aks holda 0 bo'ladi va qator qisqa qoladi)
+    usage_line = (
+        f", LLM chaqiruvi: {summary['avg_llm_calls']:.1f}, token: {summary['avg_tokens']:.0f}"
+        if summary.get("avg_tokens") else ""
+    )
     for key in ("sana", "model", "engine", "eslatma"):
         if meta.get(key):
             lines.append(f"- **{key}**: {meta[key]}")
@@ -295,7 +306,8 @@ def render_markdown(summary: dict, results: list, meta: dict) -> str:
         f"**Umumiy natija: {summary['passed']}/{summary['total']} holat o'tdi "
         f"({summary['pass_rate']:.0%})**",
         f"O'rtacha javob vaqti: {summary['avg_latency_s']:.1f} s, "
-        f"holat boshiga o'rtacha tool chaqiruvi: {summary['avg_tool_calls']:.1f}",
+        f"holat boshiga o'rtacha tool chaqiruvi: {summary['avg_tool_calls']:.1f}"
+        + usage_line,
         "",
         "## Turkumlar bo'yicha",
         "",

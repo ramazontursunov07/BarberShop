@@ -12,6 +12,7 @@ from django.db.models import Avg, Count, Max
 
 from apps.reviews.models import Review
 
+from . import observability
 from .llm import conf, get_client
 
 MIN_REVIEWS = 3          # bundan kam sharhdan xulosa chiqarmaymiz
@@ -116,12 +117,15 @@ def analyze_shop_reviews(shop, use_cache: bool = True) -> dict:
         return {**stats, "insights": None,
                 "detail": f"Tahlil uchun matnli sharhlar kamida {MIN_REVIEWS} ta bo'lishi kerak."}
 
-    resp = get_client().chat.completions.create(
-        model=conf("LLM_MODEL", "llama-3.3-70b-versatile"),
-        messages=build_messages(comments),
-        temperature=0,
-        max_tokens=900,
-    )
+    model = conf("LLM_MODEL", "llama-3.3-70b-versatile")
+    with observability.track("insights", "review_insights", model) as call:
+        resp = get_client().chat.completions.create(
+            model=model,
+            messages=build_messages(comments),
+            temperature=0,
+            max_tokens=900,
+        )
+        call.usage(resp)
     insights = parse_insights(resp.choices[0].message.content)
     result = {**stats, "analyzed_comments": len(comments), "insights": insights}
     cache.set(key, result, CACHE_SECONDS)

@@ -3,7 +3,7 @@ import logging
 from openai import OpenAIError, RateLimitError
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
@@ -14,6 +14,7 @@ from apps.shops.permissions import IsOwnerRole
 from .llm import conf
 from .review_insights import InsightsError, analyze_shop_reviews
 from .speech import MAX_AUDIO_BYTES, EmptyTranscript, SpeechNotConfigured, transcribe
+from .usage_stats import usage_stats
 
 logger = logging.getLogger(__name__)
 
@@ -155,3 +156,22 @@ class TranscribeView(APIView):
             logger.error("STT provayderi xatosi: %s", getattr(exc, "message", exc))
             return Response({"detail": "Ovozni matnga aylantirib bo'lmadi"}, status=status.HTTP_502_BAD_GATEWAY)
         return Response({"text": text})
+
+
+class IsAdminRole(BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.role == "admin")
+
+
+class UsageView(APIView):
+    """AI sarfi va tezligi (faqat admin): GET /api/ai/usage/?days=7&include_eval=1"""
+
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def get(self, request):
+        try:
+            days = min(max(int(request.query_params.get("days", 7)), 1), 90)
+        except ValueError:
+            return Response({"detail": "days son bo'lishi kerak"}, status=status.HTTP_400_BAD_REQUEST)
+        include_eval = request.query_params.get("include_eval") in ("1", "true", "yes")
+        return Response(usage_stats(days, include_eval))

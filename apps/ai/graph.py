@@ -23,7 +23,7 @@ from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
 
-from . import rag
+from . import observability, rag
 from .confirmation import REJECT_MESSAGE, is_confirmation, needs_confirmation
 from .gemini_compat import add_thought_signature_bypass, is_gemini_endpoint
 from .graph_utils import (
@@ -164,6 +164,7 @@ def build_graph(user):
     def reject(state: State) -> dict:
         """Tasdiqsiz bron/bekor qilishni bajarmaydi: har bir tool chaqiruviga rad javobini qaytaradi."""
         calls = state["messages"][-1].tool_calls
+        observability.note_guard_rejection()
         return {"messages": [
             ToolMessage(content=REJECT_MESSAGE, tool_call_id=call["id"], name=call["name"]) for call in calls
         ]}
@@ -200,13 +201,20 @@ def _history_to_messages(history: list[dict] | None) -> list:
     return messages
 
 
+@observability.traced("graph")
 def run_graph(user, message: str, history: list[dict] | None = None) -> str:
     graph = build_graph(user)
     messages = _history_to_messages(history) + [HumanMessage(content=message)]
     try:
-        result = graph.invoke({"messages": messages}, config={"recursion_limit": RECURSION_LIMIT})
+        result = graph.invoke(
+            {"messages": messages},
+            config={"recursion_limit": RECURSION_LIMIT, "callbacks": [observability.usage_callback()]},
+        )
     except GraphRecursionError:
+        observability.mark("recursion_limit")
         # Bron yaratilib ulgurgan bo'lishi mumkin: mijozga natijani tekshirishni aytamiz
         return fallback_reply(message, busy=True)
     reply = flatten_content(result["messages"][-1].content).strip()
+    if not reply:
+        observability.mark("empty_reply")
     return reply or fallback_reply(message)

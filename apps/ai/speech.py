@@ -1,4 +1,3 @@
-
 """Ovozli xabarni matnga aylantirish (speech-to-text).
 
 OpenAI-mos /audio/transcriptions endpointi ishlatiladi (Groq whisper-large-v3 yoki OpenAI whisper).
@@ -16,6 +15,7 @@ import re
 
 from openai import OpenAI
 
+from . import observability
 from .llm import conf
 
 MAX_AUDIO_BYTES = 2 * 1024 * 1024  # Telegram ovozli xabari (60 s) odatda 1 MB dan kichik
@@ -58,7 +58,8 @@ def transcribe(audio: bytes, filename: str | None = None) -> str:
     language = conf("STT_LANGUAGE")
     if language:
         kwargs["language"] = language
-    resp = client.audio.transcriptions.create(**kwargs)
+    with observability.track("stt", "transcribe", kwargs["model"]):
+        resp = client.audio.transcriptions.create(**kwargs)
     text = re.sub(r"\s+", " ", getattr(resp, "text", "") or "").strip()
     if not text:
         raise EmptyTranscript()
