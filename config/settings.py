@@ -219,6 +219,20 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": os.getenv("LOG_LEVEL", "INFO")},
 }
 
+# Sentry: SENTRY_DSN bo'lsa ishlamay qolgan xatolar avtomatik yuboriladi (kutubxona o'rnatilmagan bo'lsa e'tiborsiz)
+if os.getenv("SENTRY_DSN"):
+    try:
+        import sentry_sdk
+
+        sentry_sdk.init(
+            dsn=os.environ["SENTRY_DSN"],
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_RATE", "0")),
+            send_default_pii=False,  # telefon/ism kabi shaxsiy ma'lumotlar yuborilmasin
+            environment="production" if not DEBUG else "development",
+        )
+    except ImportError:  # pragma: no cover
+        pass
+
 # Celery (rejalashtirilgan vazifalar: eslatmalar, sharh so'rovi, doimiy bron...). Redis bo'lmasa ishlamaydi.
 CELERY_BROKER_URL = _redis_url or "memory://"
 CELERY_TIMEZONE = TIME_ZONE

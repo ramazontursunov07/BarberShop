@@ -25,3 +25,4 @@ whitenoise>=6.8
 psycopg[binary]>=3.2
 celery[redis]>=5.4
 redis>=5.0
+sentry-sdk>=2.0

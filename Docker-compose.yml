@@ -56,7 +56,12 @@ services:
   worker:
     <<: *app
     command: celery -A config worker -l info --concurrency 2
-    volumes: [media:/app/media, chroma:/app/chroma_db]
+    environment:
+      DATABASE_URL: postgres://barber:${POSTGRES_PASSWORD}@db:5432/barber
+      REDIS_URL: redis://redis:6379/0
+      API_BASE_URL: http://web:8000
+      BACKUP_DIR: /backups
+    volumes: [media:/app/media, chroma:/app/chroma_db, backups:/backups]
 
   beat:
     <<: *app
@@ -73,3 +78,4 @@ volumes:
   media:
   chroma:
   caddy_data:
+  backups:

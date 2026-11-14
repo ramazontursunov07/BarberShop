@@ -39,6 +39,7 @@ class User(AbstractUser):
     role = models.CharField(max_length=10, choices=CHOICE_ROLE, default='client')
     is_phone_verified = models.BooleanField(default=False)
     telegram_id = models.BigIntegerField(null=True, blank=True, unique=True)
+    telegram_blocked = models.BooleanField(default=False)  # mijoz botni bloklagan: xabar yubormaymiz
     no_show_count = models.PositiveIntegerField(default=0)
     blocked_until = models.DateTimeField(null=True, blank=True)
 

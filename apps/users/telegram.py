@@ -112,4 +112,6 @@ class TelegramAuthView(APIView):
     def _issue(user):
         if not user.is_active:
             return Response({"detail": "Akkaunt faol emas"}, status=status.HTTP_403_FORBIDDEN)
+        if user.telegram_blocked:  # bot bilan yana gaplashyapti: bloklangan emas
+            User.objects.filter(pk=user.pk).update(telegram_blocked=False)
         return _token_response(user)

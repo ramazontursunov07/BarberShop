@@ -15,5 +15,6 @@ app.conf.beat_schedule = {
     "send-review-requests": {"task": "apps.ai.tasks.send_review_requests", "schedule": crontab(minute="*/30")},
     "book-recurring": {"task": "apps.ai.tasks.book_recurring", "schedule": crontab(hour=3, minute=0)},
     "send-daily-digest": {"task": "apps.ai.tasks.send_daily_digest", "schedule": crontab(hour=8, minute=0)},
+    "backup-db": {"task": "apps.ai.tasks.backup_db", "schedule": crontab(hour=2, minute=30)},
     "winback": {"task": "apps.ai.tasks.winback", "schedule": crontab(hour=11, minute=0)},
 }

@@ -23,6 +23,11 @@ def send_daily_digest():
     call_command("send_daily_digest")
 
 
+@shared_task(name="apps.ai.tasks.backup_db")
+def backup_db():
+    call_command("backup_db")
+
+
 @shared_task(name="apps.ai.tasks.winback")
 def winback():
     call_command("winback")
