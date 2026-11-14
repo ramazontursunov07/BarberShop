@@ -101,3 +101,8 @@ details summary { cursor: pointer; font-weight: 600; }
 .bar-head { display: flex; justify-content: space-between; gap: 1rem; font-size: .9rem; }
 .bar { height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; margin-top: .25rem; }
 .bar > div { height: 100%; background: var(--accent); border-radius: 999px; }
+
+/* --- Admin va usta sahifalari --- */
+.booking { flex-wrap: wrap; }
+.booking > .row { flex-basis: 100%; margin-top: 0; }
+.card textarea { width: 100%; }

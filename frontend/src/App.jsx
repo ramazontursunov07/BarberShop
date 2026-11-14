@@ -7,6 +7,8 @@ import Shops from "./pages/Shops.jsx";
 import ShopPage from "./pages/ShopPage.jsx";
 import MyBookings from "./pages/MyBookings.jsx";
 import OwnerPanel from "./pages/owner/OwnerPanel.jsx";
+import MasterPanel from "./pages/master/MasterPanel.jsx";
+import AdminPanel from "./pages/admin/AdminPanel.jsx";
 
 function Protected({ roles, children }) {
   const { user, loading } = useAuth();
@@ -36,8 +38,24 @@ export default function App() {
         <Route
           path="/panel"
           element={
-            <Protected roles={["owner", "master"]}>
+            <Protected roles={["owner"]}>
               <OwnerPanel />
+            </Protected>
+          }
+        />
+        <Route
+          path="/master"
+          element={
+            <Protected roles={["master"]}>
+              <MasterPanel />
+            </Protected>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <Protected roles={["admin"]}>
+              <AdminPanel />
             </Protected>
           }
         />

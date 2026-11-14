@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/promotions/', include('apps.promotions.urls')),
     path('api/products/', include('apps.products.urls')),
     path('api/faq/', include('apps.faq.urls')),
+    path('api/admin/', include('apps.adminpanel.urls')),
 ]
 
 if settings.DEBUG:

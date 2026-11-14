@@ -144,3 +144,50 @@ class MasterDayOffDeleteView(MasterDaysOffView):
         if not dayoff.remove_day_off(request.user, master, day):
             return Response(status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class IsMasterRole(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user.is_authenticated and request.user.role == "master"
+                    and hasattr(request.user, "master_profile"))
+
+
+class MeMasterView(APIView):
+    """GET /api/masters/me/ — usta o'z profili: sartaroshxona, komissiya, ish jadvali, kelgusi dam olish kunlari."""
+
+    permission_classes = [IsMasterRole]
+
+    def get(self, request):
+        from django.utils import timezone
+
+        m = Master.objects.select_related("shop", "user").get(user=request.user)
+        return Response({
+            "id": m.id, "shop_id": m.shop_id, "shop_name": m.shop.name, "name": f"{m.user.first_name} {m.user.last_name}".strip(),
+            "phone": m.user.phone, "bio": m.bio, "is_active": m.is_active, "commission_percent": m.commission_percent,
+            "schedule": [{"weekday": s.weekday, "start_time": f"{s.start_time:%H:%M}", "end_time": f"{s.end_time:%H:%M}"}
+                         for s in m.schedules.all()],
+            "days_off": [{"date": d.date.isoformat(), "reason": d.reason}
+                         for d in m.days_off.filter(date__gte=timezone.localdate()).order_by("date")],
+        })
+
+
+class MeMasterEarningsView(APIView):
+    """GET /api/masters/me/earnings/?from=&to= — ustaning o'z daromadi va ulushi (standart: joriy oy)."""
+
+    permission_classes = [IsMasterRole]
+
+    def get(self, request):
+        from datetime import date, datetime
+
+        from apps.bookings.services import SHOP_TZ
+        from apps.insights.payroll import master_earnings
+
+        today = datetime.now(SHOP_TZ).date()
+        try:
+            start = date.fromisoformat(request.query_params.get("from") or today.replace(day=1).isoformat())
+            end = date.fromisoformat(request.query_params.get("to") or today.isoformat())
+        except ValueError:
+            raise ValidationError({"detail": "Sana YYYY-MM-DD formatida bo'lishi kerak"})
+        if end < start or (end - start).days > 366:
+            raise ValidationError({"detail": "Oraliq noto'g'ri (eng ko'pi bilan 1 yil)"})
+        return Response(master_earnings(request.user.master_profile, start, end))

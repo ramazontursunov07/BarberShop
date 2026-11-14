@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "apps.promotions",
     "apps.products",
     "apps.faq",
+    "apps.adminpanel",
 ]
 
 AUTH_USER_MODEL = "users.User"

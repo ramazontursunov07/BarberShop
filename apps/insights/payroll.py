@@ -44,3 +44,26 @@ def to_csv(report: dict) -> str:
     w.writerow(["JAMI", t["bookings"], t["revenue"], t["cash"], t["card"], t["transfer"], t["unspecified"], "",
                 t["master_share"], t["shop_share"]])
     return buf.getvalue()
+
+
+def master_earnings(master, start: date, end: date) -> dict:
+    """Bitta usta uchun: tushum, ulush (commission_percent), to'lov usullari va kunlar kesimi."""
+    a = datetime.combine(start, time.min, tzinfo=SHOP_TZ)
+    b = datetime.combine(end + timedelta(days=1), time.min, tzinfo=SHOP_TZ)
+    rows = Booking.objects.filter(master=master, status=Booking.Status.COMPLETED, start_time__gte=a, start_time__lt=b)
+    total = {"bookings": 0, "revenue": 0, "cash": 0, "card": 0, "transfer": 0, "unspecified": 0}
+    days: dict[str, dict] = {}
+    for r in rows.only("start_time", "price", "payment_method"):
+        price = int(r.price)
+        total["bookings"] += 1
+        total["revenue"] += price
+        total[r.payment_method or "unspecified"] += price
+        day = r.start_time.astimezone(SHOP_TZ).date().isoformat()
+        d = days.setdefault(day, {"date": day, "bookings": 0, "revenue": 0})
+        d["bookings"] += 1
+        d["revenue"] += price
+    share = round(total["revenue"] * master.commission_percent / 100)
+    for d in days.values():
+        d["master_share"] = round(d["revenue"] * master.commission_percent / 100)
+    return {"from": start.isoformat(), "to": end.isoformat(), "commission_percent": master.commission_percent,
+            **total, "master_share": share, "days": sorted(days.values(), key=lambda x: x["date"], reverse=True)}

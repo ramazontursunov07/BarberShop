@@ -6,7 +6,7 @@ import { LANG_LIST } from "../locales.js";
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const { t, lang, setLang } = useI18n();
-  const isStaff = user && (user.role === "owner" || user.role === "master");
+  const role = user?.role;
 
   return (
     <>
@@ -19,7 +19,9 @@ export default function Layout({ children }) {
             {t("nav.shops")}
           </NavLink>
           {user && <NavLink to="/bookings">{t("nav.bookings")}</NavLink>}
-          {isStaff && <NavLink to="/panel">{t("nav.panel")}</NavLink>}
+          {role === "owner" && <NavLink to="/panel">{t("nav.panel")}</NavLink>}
+          {role === "master" && <NavLink to="/master">{t("nav.master")}</NavLink>}
+          {role === "admin" && <NavLink to="/admin">{t("nav.admin")}</NavLink>}
           {user ? (
             <button className="link" onClick={logout}>
               {t("nav.logout")}

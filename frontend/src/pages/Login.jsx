@@ -8,7 +8,8 @@ export default function Login() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTo = location.state?.from || "/";
+  const HOME = { admin: "/admin", owner: "/panel", master: "/master" };
+  const redirectTo = location.state?.from || HOME[user?.role] || "/";
 
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState({ phone: "+998", first_name: "", last_name: "", password: "" });
@@ -26,7 +27,7 @@ export default function Login() {
     try {
       if (mode === "login") await login(form.phone, form.password);
       else await register(form);
-      navigate(redirectTo, { replace: true });
+      // Yo'naltirish yuqoridagi <Navigate> orqali: foydalanuvchi roliga qarab /admin, /panel yoki /master
     } catch (err) {
       setError(err.status === 401 ? t("login.bad") : err.message);
     } finally {

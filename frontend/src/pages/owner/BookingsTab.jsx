@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, fetchAll } from "../../api.js";
 import { useI18n } from "../../i18n.jsx";
 import { money, shiftDate, timeOnly, todayISO } from "../../format.js";
+import PaymentButtons from "../master/PaymentButtons.jsx";
 
 // Joriy holatdan keyin mumkin bo'lgan harakatlar (backend TRANSITIONS bilan bir xil)
 const ACTIONS = {
@@ -16,6 +17,7 @@ export default function BookingsTab({ shopName }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const [payFor, setPayFor] = useState(null); // "Bajarildi" bosilgan bron: to'lov usuli so'raladi
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -34,12 +36,20 @@ export default function BookingsTab({ shopName }) {
     load();
   }, [load]);
 
-  const act = async (b, status) => {
+  const act = async (b, status, payment_method = "") => {
     if (status === "cancelled" && !window.confirm(t("bk.cancel_confirm"))) return;
+    if (status === "completed" && !payment_method) {
+      setPayFor(b.id);
+      return;
+    }
     setBusyId(b.id);
     setError("");
     try {
-      await api(`/api/bookings/${b.id}/status/`, { method: "POST", body: { status } });
+      await api(`/api/bookings/${b.id}/status/`, {
+        method: "POST",
+        body: payment_method ? { status, payment_method } : { status },
+      });
+      setPayFor(null);
       await load();
     } catch (err) {
       setError(err.message);
@@ -82,6 +92,9 @@ export default function BookingsTab({ shopName }) {
                 </button>
               ))}
             </div>
+            {payFor === b.id && (
+              <PaymentButtons disabled={busyId === b.id} onPick={(m) => act(b, "completed", m)} onCancel={() => setPayFor(null)} />
+            )}
           </div>
         ))}
       </div>
