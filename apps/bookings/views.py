@@ -101,6 +101,7 @@ class SlotListView(APIView):
                 master_id=data["master"],
                 service_id=data["service"],
                 date=data["date"].isoformat(),
+                extra_service_ids=[int(x) for x in data["extra_services"].split(",")] if data["extra_services"] else None,
             )
         except ObjectDoesNotExist:
             return Response({"detail": "Usta yoki xizmat topilmadi"}, status=status.HTTP_404_NOT_FOUND)

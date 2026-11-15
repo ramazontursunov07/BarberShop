@@ -70,10 +70,11 @@ export async function api(path, { method = "GET", body, query, auth = true, retr
   }
 
   const headers = {};
-  if (body) headers["Content-Type"] = "application/json";
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+  if (body && !isForm) headers["Content-Type"] = "application/json";
   if (auth && tokens.access) headers.Authorization = `Bearer ${tokens.access}`;
 
-  const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const res = await fetch(url, { method, headers, body: body ? (isForm ? body : JSON.stringify(body)) : undefined });
 
   if (res.status === 401 && auth && tokens.access) {
     if (retry && (await refreshAccess())) {

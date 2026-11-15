@@ -5,8 +5,10 @@ import Layout from "./components/Layout.jsx";
 import Login from "./pages/Login.jsx";
 import Shops from "./pages/Shops.jsx";
 import ShopPage from "./pages/ShopPage.jsx";
-import MyBookings from "./pages/MyBookings.jsx";
+import Assistant from "./pages/Assistant.jsx";
+import Hairstyle from "./pages/Hairstyle.jsx";
 import Profile from "./pages/Profile.jsx";
+import MyBookings from "./pages/MyBookings.jsx";
 import OwnerPanel from "./pages/owner/OwnerPanel.jsx";
 import MasterPanel from "./pages/master/MasterPanel.jsx";
 import AdminPanel from "./pages/admin/AdminPanel.jsx";
@@ -28,19 +30,14 @@ export default function App() {
         <Route path="/" element={<Shops />} />
         <Route path="/shop/:id" element={<ShopPage />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/assistant" element={<Assistant />} />
+        <Route path="/hairstyle" element={<Hairstyle />} />
+        <Route path="/profile" element={<Protected><Profile /></Protected>} />
         <Route
           path="/bookings"
           element={
             <Protected>
               <MyBookings />
-            </Protected>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <Protected>
-              <Profile />
             </Protected>
           }
         />

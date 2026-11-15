@@ -5,7 +5,11 @@ import App from "./App.jsx";
 import { AuthProvider } from "./auth.jsx";
 import { I18nProvider } from "./i18n.jsx";
 import { initTelegram } from "./telegram.js";
+import { ToastProvider } from "./components/Toast.jsx";
+import { applyTheme, getTheme } from "./theme.js";
 import "./styles.css";
+
+applyTheme(getTheme());
 
 initTelegram();
 
@@ -14,7 +18,9 @@ createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <I18nProvider>
         <AuthProvider>
-          <App />
+          <ToastProvider>
+            <App />
+          </ToastProvider>
         </AuthProvider>
       </I18nProvider>
     </BrowserRouter>

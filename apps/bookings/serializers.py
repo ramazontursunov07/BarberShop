@@ -87,3 +87,4 @@ class SlotQuerySerializer(serializers.Serializer):
     master = serializers.IntegerField()
     service = serializers.IntegerField()
     date = serializers.DateField()
+    extra_services = serializers.RegexField(r'^\d+(,\d+)*$', required=False, allow_blank=True, default='')
