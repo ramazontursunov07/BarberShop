@@ -86,6 +86,104 @@ function Services({ shopId }) {
   );
 }
 
+/* ---------- Jamoa: ustalarni qo'shish va boshqarish ---------- */
+function TeamRow({ m, onChanged, onError }) {
+  const { t } = useI18n();
+  const [percent, setPercent] = useState(m.commission_percent);
+  const [busy, setBusy] = useState(false);
+  const dirty = Number(percent) !== m.commission_percent;
+
+  const patch = async (body) => {
+    setBusy(true); onError("");
+    try { await api(`/api/masters/my/${m.id}/`, { method: "PATCH", body }); onChanged(); }
+    catch (e) { onError(e.message); } finally { setBusy(false); }
+  };
+  const toggle = () => {
+    if (m.is_active && m.upcoming_bookings > 0 && !window.confirm(t("mg.deactivate_confirm", { n: m.upcoming_bookings }))) return;
+    patch({ is_active: !m.is_active });
+  };
+
+  return (
+    <div className="card booking" style={{ opacity: m.is_active ? 1 : 0.55 }}>
+      <div>
+        <strong>{m.name}</strong> · <a href={`tel:${m.phone}`}>{m.phone}</a>
+        {m.upcoming_bookings > 0 && <p className="muted">{t("mg.upcoming", { n: m.upcoming_bookings })}</p>}
+      </div>
+      <div className="row" style={{ margin: 0 }}>
+        <label className="muted">{t("adm.commission")} %
+          <input className="search" type="number" min="0" max="100" style={{ width: 90 }} value={percent} onChange={(e) => setPercent(e.target.value)} />
+        </label>
+        {dirty && <button className="btn" disabled={busy} onClick={() => patch({ commission_percent: Number(percent) })}>{t("mg.save")}</button>}
+        <button className={`btn ${m.is_active ? "danger" : "ghost"}`} disabled={busy} onClick={toggle}>
+          {m.is_active ? t("adm.deactivate") : t("adm.activate")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Team({ shopId, onChanged }) {
+  const { t } = useI18n();
+  const blank = { phone: "+998", first_name: "", last_name: "", commission_percent: 50, password: "" };
+  const [team, setTeam] = useState(null);
+  const [form, setForm] = useState(blank);
+  const [created, setCreated] = useState(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = () => api("/api/masters/my/team/", { query: { shop: shopId } }).then(setTeam).catch((e) => setError(e.message));
+  useEffect(() => { load(); }, [shopId]); // eslint-disable-line
+  const changed = () => { load(); onChanged(); };
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const add = async (e) => {
+    e.preventDefault();
+    setBusy(true); setError(""); setCreated(null);
+    try {
+      const res = await api("/api/masters/my/team/", { method: "POST", body: { ...form, shop: shopId, commission_percent: Number(form.commission_percent) } });
+      setCreated({ phone: res.master.phone, password: res.temp_password });
+      setForm(blank);
+      changed();
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
+  return (
+    <>
+      <h2>{t("mg.team")}</h2>
+      {team && team.length === 0 && <p className="muted">{t("adm.no_masters")}</p>}
+      <div className="list">
+        {(team || []).map((m) => <TeamRow key={m.id} m={m} onChanged={changed} onError={setError} />)}
+      </div>
+
+      <form className="card form" onSubmit={add}>
+        <strong>{t("adm.add_master")}</strong>
+        <div className="row">
+          <input className="search grow" value={form.phone} onChange={set("phone")} placeholder="+998901234567" inputMode="tel" required />
+          <input className="search grow" value={form.first_name} onChange={set("first_name")} placeholder={t("first_name")} required />
+          <input className="search grow" value={form.last_name} onChange={set("last_name")} placeholder={t("last_name")} />
+        </div>
+        <div className="row">
+          <label className="muted">{t("adm.commission")} %
+            <input className="search" type="number" min="0" max="100" value={form.commission_percent} onChange={set("commission_percent")} />
+          </label>
+          <input className="search grow" value={form.password} onChange={set("password")} placeholder={t("adm.owner_password")} autoComplete="off" />
+        </div>
+        <p className="muted">{t("adm.master_hint")} {t("mg.team_hint")}</p>
+        {error && <p className="error">{error}</p>}
+        {created && <p className="ok">{t("adm.master_created")}</p>}
+        {created?.password && (
+          <div className="card summary">
+            <p>{t("mg.temp_pw")}</p>
+            <p>{t("adm.login_phone")}: <strong>{created.phone}</strong></p>
+            <p>{t("password")}: <strong style={{ fontFamily: "monospace", userSelect: "all" }}>{created.password}</strong></p>
+          </div>
+        )}
+        <button className="btn" disabled={busy}>{busy ? t("wait") : t("adm.add_master")}</button>
+      </form>
+    </>
+  );
+}
+
 /* ---------- Ustalar jadvali ---------- */
 function ScheduleEditor({ master }) {
   const { t } = useI18n();
@@ -136,12 +234,12 @@ function ScheduleEditor({ master }) {
   );
 }
 
-function Masters({ shopId }) {
+function Masters({ shopId, version }) {
   const { t } = useI18n();
   const [masters, setMasters] = useState([]);
   useEffect(() => {
     fetchAll("/api/masters/my/").then((l) => setMasters(l.filter((m) => m.shop === shopId))).catch(() => setMasters([]));
-  }, [shopId]);
+  }, [shopId, version]);
   return (
     <>
       <h2>{t("mg.schedule")}</h2>
@@ -329,11 +427,13 @@ function Gallery({ shopId }) {
 }
 
 export default function ManageTab({ shopId }) {
+  const [version, setVersion] = useState(0);
   return (
     <>
       <ShopInfo shopId={shopId} />
       <Services shopId={shopId} />
-      <Masters shopId={shopId} />
+      <Team shopId={shopId} onChanged={() => setVersion((v) => v + 1)} />
+      <Masters shopId={shopId} version={version} />
       <Faq shopId={shopId} />
       <Gallery shopId={shopId} />
     </>

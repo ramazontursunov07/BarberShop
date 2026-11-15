@@ -31,7 +31,9 @@ export default function Layout({ children }) {
           <nav className="nav">
             <NavLink to="/" end className="desktop-only"><Icon name="home" size={18} />{t("nav.shops")}</NavLink>
             <NavLink to="/assistant" className="desktop-only"><Icon name="sparkle" size={18} />{t("nav.ai")}</NavLink>
+            <NavLink to="/hairstyle" className="desktop-only"><Icon name="camera" size={18} />{t("nav.style")}</NavLink>
             {user && <NavLink to="/bookings" className="desktop-only"><Icon name="calendar" size={18} />{t("nav.bookings")}</NavLink>}
+            {user && <NavLink to="/profile" className="desktop-only"><Icon name="user" size={18} />{t("nav.profile")}</NavLink>}
             {staff && <NavLink to={staff[0]}><Icon name="settings" size={18} /><span className="nav-link-text">{staff[1]}</span></NavLink>}
             <select className="lang" value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Language">
               {LANG_LIST.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}

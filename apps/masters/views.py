@@ -12,7 +12,7 @@ from apps.shops.permissions import IsOwnerRole
 
 from . import dayoff
 from .models import Master, WorkSchedule
-from .serializers import MasterSerializer, MasterUpdateSerializer, ScheduleSerializer
+from .serializers import MasterSerializer, MasterUpdateSerializer, ScheduleSerializer, TeamMasterSerializer
 
 
 def _with_rating(qs):
@@ -59,6 +59,49 @@ class MyMasterDetailView(generics.RetrieveUpdateAPIView):
 
     def get_queryset(self):
         return Master.objects.filter(shop__owner=self.request.user)
+
+
+class MyTeamView(APIView):
+    """Egasi: o'z sartaroshxonasi jamoasi.
+
+    GET  ?shop=<id> — barcha ustalar (faol bo'lmaganlari ham), telefon, komissiya va kelgusi bronlar soni bilan.
+    POST {shop, phone, first_name, last_name, password?, bio?, commission_percent?} — yangi usta akkaunti.
+    Faqat yangi raqamga akkaunt ochiladi: ro'yxatdan o'tgan odamning rolini egasi o'zgartira olmaydi (buni admin qiladi).
+    """
+
+    permission_classes = [IsOwnerRole]
+
+    def _shop(self, request, raw):
+        from apps.shops.models import Shop
+
+        if not str(raw or "").isdigit():
+            raise ValidationError({"shop": "shop majburiy"})
+        return get_object_or_404(Shop, pk=int(raw), owner=request.user)
+
+    def get(self, request):
+        shop = self._shop(request, request.query_params.get("shop"))
+        masters = shop.masters.select_related("user").order_by("id")
+        return Response(TeamMasterSerializer(masters, many=True).data)
+
+    def post(self, request):
+        from apps.adminpanel import services as admin_services
+        from apps.adminpanel.serializers import MasterCreateSerializer
+        from apps.users.models import User
+
+        shop = self._shop(request, request.data.get("shop"))
+        ser = MasterCreateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = dict(ser.validated_data)
+        try:
+            phone = admin_services.normalize_phone(data["phone"])
+            if User.objects.filter(phone=phone).exists():
+                raise admin_services.AdminError(
+                    "Bu raqam allaqachon ro'yxatdan o'tgan. Uni usta qilish uchun platforma administratoriga murojaat qiling")
+            master, created, temp = admin_services.create_master(shop, data)
+        except admin_services.AdminError as exc:
+            raise ValidationError({"detail": str(exc)})
+        return Response({"master": TeamMasterSerializer(master).data, "temp_password": temp},
+                        status=status.HTTP_201_CREATED)
 
 
 class MasterScheduleView(APIView):

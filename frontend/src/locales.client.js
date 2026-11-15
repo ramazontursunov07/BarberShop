@@ -1,5 +1,7 @@
 // Yangi mijoz interfeysi tarjimalari (locales.js ga qo'shiladi).
 export const clientUz = {
+  "mg.temp_pw": "Usta uchun vaqtinchalik parol (faqat hozir ko'rsatiladi). Uni ustaga bering, u profilida almashtira oladi.",
+  "mg.team": "Jamoa (ustalar)", "mg.team_hint": "Mavjud akkaunt egasini usta qilish uchun platforma administratoriga murojaat qiling.", "mg.upcoming": "Kelgusi bronlar: {n}", "mg.deactivate_confirm": "Ustaning {n} ta kelgusi broni bor. Baribir o'chirilsinmi? (Mavjud bronlar bekor bo'lmaydi, yangi bron olinmaydi)",
   "mg.shop_info": "Sartaroshxona ma'lumotlari", "mg.shop_name": "Nomi", "mg.shop_desc": "Tavsif", "mg.shop_phone": "Telefon",
   "mg.shop_city": "Shahar", "mg.shop_district": "Tuman", "mg.shop_address": "Manzil", "mg.opens": "Ochilish vaqti", "mg.closes": "Yopilish vaqti",
   "mg.use_location": "Joylashuvimni qo'yish", "mg.location_set": "Joylashuv aniqlandi. Saqlashni bosing.", "mg.photo_delete_confirm": "Rasm o'chirilsinmi?",
@@ -26,6 +28,8 @@ export const clientUz = {
 };
 
 export const clientRu = {
+  "mg.temp_pw": "Временный пароль для мастера (показывается только сейчас). Передайте его мастеру, он сможет сменить его в профиле.",
+  "mg.team": "Команда (мастера)", "mg.team_hint": "Чтобы сделать мастером уже зарегистрированного человека, обратитесь к администратору платформы.", "mg.upcoming": "Предстоящих записей: {n}", "mg.deactivate_confirm": "У мастера {n} предстоящих записей. Всё равно отключить? (Существующие записи не отменяются, новые приниматься не будут)",
   "mg.shop_info": "Данные барбершопа", "mg.shop_name": "Название", "mg.shop_desc": "Описание", "mg.shop_phone": "Телефон",
   "mg.shop_city": "Город", "mg.shop_district": "Район", "mg.shop_address": "Адрес", "mg.opens": "Открытие", "mg.closes": "Закрытие",
   "mg.use_location": "Указать моё местоположение", "mg.location_set": "Местоположение определено. Нажмите «Сохранить».", "mg.photo_delete_confirm": "Удалить фото?",
@@ -52,6 +56,8 @@ export const clientRu = {
 };
 
 export const clientEn = {
+  "mg.temp_pw": "Temporary password for the barber (shown only now). Give it to them; they can change it in their profile.",
+  "mg.team": "Team (barbers)", "mg.team_hint": "To make an already registered person a barber, contact the platform administrator.", "mg.upcoming": "Upcoming bookings: {n}", "mg.deactivate_confirm": "This barber has {n} upcoming bookings. Deactivate anyway? (Existing bookings stay, no new ones are accepted)",
   "mg.shop_info": "Barbershop details", "mg.shop_name": "Name", "mg.shop_desc": "Description", "mg.shop_phone": "Phone",
   "mg.shop_city": "City", "mg.shop_district": "District", "mg.shop_address": "Address", "mg.opens": "Opens", "mg.closes": "Closes",
   "mg.use_location": "Use my location", "mg.location_set": "Location detected. Press Save.", "mg.photo_delete_confirm": "Delete this photo?",

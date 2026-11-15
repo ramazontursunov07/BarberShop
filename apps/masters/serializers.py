@@ -45,3 +45,24 @@ class ScheduleSerializer(serializers.ModelSerializer):
         if attrs["start_time"] >= attrs["end_time"]:
             raise serializers.ValidationError("Boshlanish vaqti tugash vaqtidan oldin bo'lishi kerak.")
         return attrs
+
+
+class TeamMasterSerializer(serializers.ModelSerializer):
+    """Egasi ko'radigan usta: telefon, komissiya va kelgusi faol bronlar soni."""
+
+    name = serializers.SerializerMethodField()
+    phone = serializers.CharField(source="user.phone", read_only=True)
+    upcoming_bookings = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Master
+        fields = ("id", "name", "phone", "bio", "is_active", "commission_percent", "upcoming_bookings")
+        read_only_fields = fields
+
+    def get_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}".strip()
+
+    def get_upcoming_bookings(self, obj):
+        from django.utils import timezone
+
+        return obj.bookings.filter(status__in=["pending", "confirmed"], start_time__gte=timezone.now()).count()
