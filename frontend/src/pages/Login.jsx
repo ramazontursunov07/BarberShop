@@ -38,48 +38,67 @@ export default function Login() {
   const isLogin = mode === "login";
 
   return (
-    <form className="card form" onSubmit={submit}>
-      <h2>{isLogin ? t("login.title") : t("register.title")}</h2>
+    <div className="card auth">
+      <aside className="auth-side">
+        <span className="brand-mark">✂</span>
+        <h2>{t("auth.welcome")}</h2>
+        <ul>
+          <li>{t("auth.p1")}</li>
+          <li>{t("auth.p2")}</li>
+          <li>{t("auth.p3")}</li>
+        </ul>
+      </aside>
 
-      <label>
-        {t("phone")}
-        <input value={form.phone} onChange={set("phone")} placeholder="+998901234567" inputMode="tel" required />
-      </label>
+      <form className="form auth-form" onSubmit={submit}>
+        <h2>{isLogin ? t("login.title") : t("register.title")}</h2>
 
-      {!isLogin && (
-        <>
-          <label>
-            {t("first_name")}
-            <input value={form.first_name} onChange={set("first_name")} maxLength={20} required />
-          </label>
-          <label>
-            {t("last_name")}
-            <input value={form.last_name} onChange={set("last_name")} maxLength={20} />
-          </label>
-        </>
-      )}
+        <label>
+          {t("phone")}
+          <input value={form.phone} onChange={set("phone")} placeholder="+998901234567" inputMode="tel" autoComplete="tel" required />
+        </label>
 
-      <label>
-        {t("password")}
-        <input type="password" value={form.password} onChange={set("password")} minLength={isLogin ? 1 : 8} required />
-      </label>
+        {!isLogin && (
+          <>
+            <label>
+              {t("first_name")}
+              <input value={form.first_name} onChange={set("first_name")} maxLength={20} required />
+            </label>
+            <label>
+              {t("last_name")}
+              <input value={form.last_name} onChange={set("last_name")} maxLength={20} />
+            </label>
+          </>
+        )}
 
-      {error && <p className="error">{error}</p>}
+        <label>
+          {t("password")}
+          <input
+            type="password"
+            value={form.password}
+            onChange={set("password")}
+            minLength={isLogin ? 1 : 8}
+            autoComplete={isLogin ? "current-password" : "new-password"}
+            required
+          />
+        </label>
 
-      <button className="btn" disabled={busy}>
-        {busy ? t("wait") : isLogin ? t("login.submit") : t("register.submit")}
-      </button>
+        {error && <p className="error">{error}</p>}
 
-      <button
-        type="button"
-        className="link"
-        onClick={() => {
-          setMode(isLogin ? "register" : "login");
-          setError("");
-        }}
-      >
-        {isLogin ? t("login.to_register") : t("login.to_login")}
-      </button>
-    </form>
+        <button className="btn block" disabled={busy}>
+          {busy ? t("wait") : isLogin ? t("login.submit") : t("register.submit")}
+        </button>
+
+        <button
+          type="button"
+          className="link"
+          onClick={() => {
+            setMode(isLogin ? "register" : "login");
+            setError("");
+          }}
+        >
+          {isLogin ? t("login.to_register") : t("login.to_login")}
+        </button>
+      </form>
+    </div>
   );
 }

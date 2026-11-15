@@ -26,10 +26,17 @@ class RatingMixin(serializers.Serializer):
 
 
 class ShopListSerializer(RatingMixin, serializers.ModelSerializer):
+    cover = serializers.SerializerMethodField()
+
     class Meta:
         model = Shop
         fields = ('id', 'name', 'city', 'district', 'address', 'latitude', 'longitude', 'opens_at', 'closes_at',
-                  'avg_rating', 'reviews_count')
+                  'avg_rating', 'reviews_count', 'cover')
+
+    def get_cover(self, obj):
+        # Birinchi rasm (photos prefetch qilingan: qo'shimcha so'rov yo'q)
+        photos = list(obj.photos.all())
+        return photos[0].image.url if photos else None
 
 
 class ShopDetailSerializer(RatingMixin, serializers.ModelSerializer):

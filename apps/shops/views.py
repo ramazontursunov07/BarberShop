@@ -22,7 +22,7 @@ def with_rating(qs):
 
 
 class ShopListView(generics.ListAPIView):
-    queryset = with_rating(Shop.objects.filter(is_approved=True, is_active=True))
+    queryset = with_rating(Shop.objects.filter(is_approved=True, is_active=True)).prefetch_related('photos')
     serializer_class = ShopListSerializer
     permission_classes = [permissions.AllowAny]
     filter_backends = [SearchFilter]

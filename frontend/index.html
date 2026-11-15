@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>BarberShop</title>
+    <meta name="theme-color" content="#0e1013" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script>
+      // Tema yaltirashsiz o'rnatiladi: saqlangan tanlov, bo'lmasa tizim sozlamasi
+      try {
+        var th = localStorage.getItem("theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+        document.documentElement.setAttribute("data-theme", th);
+      } catch (e) {}
+    </script>
     <!-- Telegram Mini App: oddiy brauzerda ham xavfsiz, bo'sh initData beradi -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
