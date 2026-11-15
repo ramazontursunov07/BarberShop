@@ -1,5 +1,8 @@
 // Yangi mijoz interfeysi tarjimalari (locales.js ga qo'shiladi).
 export const clientUz = {
+  "mg.shop_info": "Sartaroshxona ma'lumotlari", "mg.shop_name": "Nomi", "mg.shop_desc": "Tavsif", "mg.shop_phone": "Telefon",
+  "mg.shop_city": "Shahar", "mg.shop_district": "Tuman", "mg.shop_address": "Manzil", "mg.opens": "Ochilish vaqti", "mg.closes": "Yopilish vaqti",
+  "mg.use_location": "Joylashuvimni qo'yish", "mg.location_set": "Joylashuv aniqlandi. Saqlashni bosing.", "mg.photo_delete_confirm": "Rasm o'chirilsinmi?",
   "nav.home": "Asosiy", "nav.ai": "AI yordamchi", "nav.style": "Soch uslubi", "nav.profile": "Profil",
   "home.title_a": "Mukammal soch olish —", "home.title_b": "bir necha bosishda",
   "home.sub": "Yaqin atrofdagi sartaroshxonani toping, ustani tanlang va bo'sh vaqtga bron qiling.",
@@ -23,6 +26,9 @@ export const clientUz = {
 };
 
 export const clientRu = {
+  "mg.shop_info": "Данные барбершопа", "mg.shop_name": "Название", "mg.shop_desc": "Описание", "mg.shop_phone": "Телефон",
+  "mg.shop_city": "Город", "mg.shop_district": "Район", "mg.shop_address": "Адрес", "mg.opens": "Открытие", "mg.closes": "Закрытие",
+  "mg.use_location": "Указать моё местоположение", "mg.location_set": "Местоположение определено. Нажмите «Сохранить».", "mg.photo_delete_confirm": "Удалить фото?",
   "nav.home": "Главная", "nav.ai": "AI-помощник", "nav.style": "Стрижка", "nav.profile": "Профиль",
   "home.title_a": "Идеальная стрижка —", "home.title_b": "в пару касаний",
   "home.sub": "Найдите барбершоп рядом, выберите мастера и запишитесь на свободное время.",
@@ -46,6 +52,9 @@ export const clientRu = {
 };
 
 export const clientEn = {
+  "mg.shop_info": "Barbershop details", "mg.shop_name": "Name", "mg.shop_desc": "Description", "mg.shop_phone": "Phone",
+  "mg.shop_city": "City", "mg.shop_district": "District", "mg.shop_address": "Address", "mg.opens": "Opens", "mg.closes": "Closes",
+  "mg.use_location": "Use my location", "mg.location_set": "Location detected. Press Save.", "mg.photo_delete_confirm": "Delete this photo?",
   "nav.home": "Home", "nav.ai": "AI assistant", "nav.style": "Style", "nav.profile": "Profile",
   "home.title_a": "The perfect haircut —", "home.title_b": "in a few taps",
   "home.sub": "Find a barbershop nearby, pick your barber and book a free slot.",

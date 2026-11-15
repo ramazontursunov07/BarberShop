@@ -199,6 +199,83 @@ function Faq({ shopId }) {
   );
 }
 
+/* ---------- Sartaroshxona ma'lumotlari ---------- */
+function ShopInfo({ shopId }) {
+  const { t } = useI18n();
+  const [f, setF] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api(`/api/shops/my/${shopId}/`)
+      .then((s) => setF({ ...s, opens_at: hhmm(s.opens_at), closes_at: hhmm(s.closes_at) }))
+      .catch((e) => setError(e.message));
+  }, [shopId]);
+
+  if (!f) return error ? <p className="error">{error}</p> : <p className="muted">{t("loading")}</p>;
+  const set = (k) => (e) => { setF({ ...f, [k]: e.target.value }); setMsg(""); };
+
+  const locate = () => {
+    if (!navigator.geolocation) return setError(t("home.no_geo"));
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setF((cur) => ({ ...cur, latitude: pos.coords.latitude.toFixed(6), longitude: pos.coords.longitude.toFixed(6) }));
+        setMsg(t("mg.location_set"));
+        setError("");
+      },
+      () => setError(t("home.no_geo")),
+      { timeout: 10000 }
+    );
+  };
+
+  const save = async () => {
+    setBusy(true); setError(""); setMsg("");
+    try {
+      const body = {
+        name: f.name, description: f.description || "", phone: f.phone, city: f.city, district: f.district || "",
+        address: f.address, opens_at: f.opens_at, closes_at: f.closes_at,
+        latitude: f.latitude === "" || f.latitude == null ? null : String(f.latitude),
+        longitude: f.longitude === "" || f.longitude == null ? null : String(f.longitude),
+      };
+      const s = await api(`/api/shops/my/${shopId}/`, { method: "PATCH", body });
+      setF({ ...s, opens_at: hhmm(s.opens_at), closes_at: hhmm(s.closes_at) });
+      setMsg(t("mg.saved"));
+    } catch (e) { setError(e.message); } finally { setBusy(false); }
+  };
+
+  return (
+    <>
+      <h2>{t("mg.shop_info")}</h2>
+      <div className="card form" style={{ marginTop: 0 }}>
+        <label>{t("mg.shop_name")}<input value={f.name || ""} onChange={set("name")} maxLength={120} /></label>
+        <label>{t("mg.shop_desc")}<textarea rows={3} value={f.description || ""} onChange={set("description")} /></label>
+        <label>{t("mg.shop_phone")}<input value={f.phone || ""} onChange={set("phone")} inputMode="tel" /></label>
+        <div className="row">
+          <label className="grow">{t("mg.shop_city")}<input value={f.city || ""} onChange={set("city")} /></label>
+          <label className="grow">{t("mg.shop_district")}<input value={f.district || ""} onChange={set("district")} /></label>
+        </div>
+        <label>{t("mg.shop_address")}<input value={f.address || ""} onChange={set("address")} /></label>
+        <div className="row">
+          <label className="grow">{t("mg.opens")}<input type="time" value={f.opens_at || ""} onChange={set("opens_at")} /></label>
+          <label className="grow">{t("mg.closes")}<input type="time" value={f.closes_at || ""} onChange={set("closes_at")} /></label>
+        </div>
+        <div className="row">
+          <button type="button" className="btn ghost" onClick={locate}>📍 {t("mg.use_location")}</button>
+          {f.latitude != null && f.latitude !== "" && (
+            <a href={`https://www.google.com/maps/search/?api=1&query=${f.latitude},${f.longitude}`} target="_blank" rel="noreferrer">
+              {f.latitude}, {f.longitude}
+            </a>
+          )}
+        </div>
+        {error && <p className="error">{error}</p>}
+        {msg && <p className="ok">{msg}</p>}
+        <button className="btn" onClick={save} disabled={busy || !f.name}>{busy ? t("wait") : t("mg.save")}</button>
+      </div>
+    </>
+  );
+}
+
 /* ---------- Galereya ---------- */
 function Gallery({ shopId }) {
   const { t } = useI18n();
@@ -224,11 +301,23 @@ function Gallery({ shopId }) {
     } catch (err) { setError(String(err.message)); } finally { setBusy(false); e.target.value = ""; }
   };
 
+  const remove = async (id) => {
+    if (!window.confirm(t("mg.photo_delete_confirm"))) return;
+    setError("");
+    try { await api(`/api/shops/photos/${id}/`, { method: "DELETE" }); load(); } catch (err) { setError(err.message); }
+  };
+
   return (
     <>
       <h2>{t("mg.gallery")}</h2>
       <div className="gallery">
-        {photos.map((p) => <img key={p.id} src={p.image} alt="" />)}
+        {photos.map((p) => (
+          <div key={p.id} style={{ position: "relative", flex: "none" }}>
+            <img src={p.image} alt="" />
+            <button className="icon-btn" onClick={() => remove(p.id)} aria-label={t("mg.delete")} title={t("mg.delete")}
+              style={{ position: "absolute", top: 6, right: 6, width: 30, height: 30, background: "rgba(0,0,0,.6)", color: "#fff", border: 0 }}>✕</button>
+          </div>
+        ))}
       </div>
       {error && <p className="error">{error}</p>}
       <label className="btn ghost" style={{ display: "inline-block", marginTop: ".5rem" }}>
@@ -242,6 +331,7 @@ function Gallery({ shopId }) {
 export default function ManageTab({ shopId }) {
   return (
     <>
+      <ShopInfo shopId={shopId} />
       <Services shopId={shopId} />
       <Masters shopId={shopId} />
       <Faq shopId={shopId} />

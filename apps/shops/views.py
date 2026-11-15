@@ -9,7 +9,7 @@ from django.db.models import Avg, Count
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import Shop
+from .models import Shop, ShopPhoto
 from .permissions import IsOwnerRole, IsShopOwner
 
 
@@ -67,6 +67,15 @@ class ShopPhotoCreateView(generics.CreateAPIView):
     serializer_class = ShopPhotoCreateSerializer
     permission_classes = [IsOwnerRole]
     parser_classes = [MultiPartParser, FormParser]
+
+
+class ShopPhotoDeleteView(generics.DestroyAPIView):
+    """DELETE /api/shops/photos/<id>/ — egasi faqat o'z sartaroshxonasi rasmini o'chiradi."""
+
+    permission_classes = [IsOwnerRole]
+
+    def get_queryset(self):
+        return ShopPhoto.objects.filter(shop__owner=self.request.user)
 
 
 class NearbyShopsView(APIView):
