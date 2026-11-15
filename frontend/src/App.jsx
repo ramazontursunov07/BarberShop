@@ -6,6 +6,7 @@ import Login from "./pages/Login.jsx";
 import Shops from "./pages/Shops.jsx";
 import ShopPage from "./pages/ShopPage.jsx";
 import MyBookings from "./pages/MyBookings.jsx";
+import Profile from "./pages/Profile.jsx";
 import OwnerPanel from "./pages/owner/OwnerPanel.jsx";
 import MasterPanel from "./pages/master/MasterPanel.jsx";
 import AdminPanel from "./pages/admin/AdminPanel.jsx";
@@ -32,6 +33,14 @@ export default function App() {
           element={
             <Protected>
               <MyBookings />
+            </Protected>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <Protected>
+              <Profile />
             </Protected>
           }
         />

@@ -1,0 +1,8 @@
+# Qator oxirini bir xil saqlash (Windows CRLF / Linux LF farqi git'da "o'zgargan" bo'lib ko'rinmasligi uchun)
+* text=auto
+*.sh text eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary

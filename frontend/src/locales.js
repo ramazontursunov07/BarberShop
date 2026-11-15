@@ -1,5 +1,6 @@
 import { staffEn, staffRu, staffUz } from "./locales.staff.js";
 import { extraEn, extraRu, extraUz } from "./locales.extra.js";
+import { profileEn, profileRu, profileUz } from "./locales.profile.js";
 // Tarjimalar. Kalit topilmasa o'zbekcha matn ko'rsatiladi.
 const uz = {
   "nav.shops": "Sartaroshxonalar", "nav.bookings": "Bronlarim", "nav.panel": "Panel",
@@ -145,8 +146,8 @@ const en = {
 };
 
 export const LANGS = {
-  uz: { ...uz, ...staffUz, ...extraUz },
-  ru: { ...ru, ...staffRu, ...extraRu },
-  en: { ...en, ...staffEn, ...extraEn },
+  uz: { ...uz, ...staffUz, ...extraUz, ...profileUz },
+  ru: { ...ru, ...staffRu, ...extraRu, ...profileRu },
+  en: { ...en, ...staffEn, ...extraEn, ...profileEn },
 };
 export const LANG_LIST = ["uz", "ru", "en"];

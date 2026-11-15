@@ -5,7 +5,7 @@ from .throttles import AuthThrottle
 
 from .telegram import TelegramAuthView
 from .telegram_webapp import TelegramWebAppAuthView, TelegramWebAppLinkView
-from .views import MeView,RegisterView
+from .views import MeView, RegisterView, SetPasswordView
 
 
 class ThrottledLoginView(TokenObtainPairView):
@@ -17,6 +17,7 @@ urlpatterns = [
     path('login/',ThrottledLoginView.as_view(),name='login'),
     path('token/refresh/',TokenRefreshView.as_view(),name='token-refresh'),
     path('me/',MeView.as_view(),name='me'),
+    path('set-password/',SetPasswordView.as_view(),name='set-password'),
     path('telegram/auth/',TelegramAuthView.as_view(),name='telegram-auth'),
     path('telegram/webapp/',TelegramWebAppAuthView.as_view(),name='telegram-webapp'),
     path('telegram/link/',TelegramWebAppLinkView.as_view(),name='telegram-link'),

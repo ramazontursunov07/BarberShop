@@ -39,6 +39,7 @@ export default function Layout({ children }) {
           <NavLink to="/" end>{t("nav.shops")}</NavLink>
           {user && <NavLink to="/bookings">{t("nav.bookings")}</NavLink>}
           {panel && <NavLink to={panel[0]}>{t(panel[1])}</NavLink>}
+          {user && <NavLink to="/profile">{t("nav.profile")}</NavLink>}
           {user ? (
             <button className="link" onClick={logout}>{t("nav.logout")}</button>
           ) : (
@@ -64,6 +65,7 @@ export default function Layout({ children }) {
         <NavLink to="/" end><span className="ico">🏠</span>{t("nav.shops")}</NavLink>
         {user && <NavLink to="/bookings"><span className="ico">📅</span>{t("nav.bookings")}</NavLink>}
         {panel && <NavLink to={panel[0]}><span className="ico">{panel[2]}</span>{t(panel[1])}</NavLink>}
+        {user && <NavLink to="/profile"><span className="ico">👤</span>{t("nav.profile")}</NavLink>}
         {user ? (
           <button onClick={logout}><span className="ico">🚪</span>{t("nav.logout")}</button>
         ) : (

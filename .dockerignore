@@ -8,3 +8,5 @@ media
 frontend/node_modules
 .env
 eval_reports
+frontend/dist
+.github

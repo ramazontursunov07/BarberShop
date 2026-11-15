@@ -103,8 +103,15 @@ class TelegramAuthView(APIView):
             )
         elif user.telegram_id is None:
             user.telegram_id = tg_id
+            fields = ["telegram_id", "is_phone_verified"]
+            if not user.is_phone_verified:
+                # Ro'yxatdan o'tishda raqam tasdiqlanmaydi: bu akkauntni raqam egasi emas, boshqa odam
+                # ochgan va parolini bilishi mumkin. Raqamni endi Telegram tasdiqladi, shuning uchun eski
+                # parol (va u bilan olingan tokenlar) bekor qilinadi; yangisini egasi profilda o'rnatadi.
+                user.set_unusable_password()
+                fields.append("password")
             user.is_phone_verified = True  # raqamni Telegram tasdiqlagan
-            user.save(update_fields=["telegram_id", "is_phone_verified"])
+            user.save(update_fields=fields)
 
         return self._issue(user)
 

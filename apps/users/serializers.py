@@ -14,7 +14,12 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    has_password = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ('id', 'phone', 'first_name', 'last_name', 'role', 'is_phone_verified')
-        read_only_fields = ('id', 'phone', 'role', 'is_phone_verified')
+        fields = ('id', 'phone', 'first_name', 'last_name', 'role', 'is_phone_verified', 'has_password')
+        read_only_fields = ('id', 'phone', 'role', 'is_phone_verified', 'has_password')
+
+    def get_has_password(self, obj):
+        return obj.has_usable_password()

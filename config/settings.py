@@ -196,6 +196,8 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("JWT_ACCESS_MINUTES", "60"))),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv("JWT_REFRESH_DAYS", "14"))),
+    # Parol o'zgarganda yoki bekor qilinganda eski access/refresh tokenlar ishlamay qoladi
+    "CHECK_REVOKE_TOKEN": True,
 }
 
 # Vergul bilan: CORS_ALLOWED_ORIGINS=https://app.barber.uz
