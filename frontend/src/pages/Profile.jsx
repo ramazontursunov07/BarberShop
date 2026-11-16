@@ -5,10 +5,10 @@ import { useAuth } from "../auth.jsx";
 import { useI18n } from "../i18n.jsx";
 import { dateTime } from "../format.js";
 import Icon from "../components/Icon.jsx";
-import { Avatar } from "../components/ui.jsx";
+import { Avatar, PasswordInput } from "../components/ui.jsx";
 
 export default function Profile() {
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const { t, lang } = useI18n();
   const [next, setNext] = useState(null);
   const [hasPassword, setHasPassword] = useState(!!user?.has_password);
@@ -17,6 +17,31 @@ export default function Profile() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [first, setFirst] = useState(user?.first_name || "");
+  const [last, setLast] = useState(user?.last_name || "");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [editPw, setEditPw] = useState("");
+  const [pBusy, setPBusy] = useState(false);
+  const [pError, setPError] = useState("");
+
+  const phoneChanged = phone.trim() !== (user?.phone || "");
+
+  const saveProfile = async (e) => {
+    e.preventDefault();
+    setPError("");
+    setPBusy(true);
+    try {
+      await api("/api/users/me/", { method: "PATCH", body: { first_name: first.trim(), last_name: last.trim(), phone: phone.trim(), ...(phoneChanged && user.has_password ? { current_password: editPw } : {}) } });
+      await refresh();
+      setEditPw("");
+      setEditing(false);
+    } catch (err) {
+      setPError(err.message);
+    } finally {
+      setPBusy(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -55,7 +80,46 @@ export default function Profile() {
       <div className="card" style={{ marginTop: "1rem", display: "flex", gap: "1rem", alignItems: "center" }}>
         <Avatar name={name} />
         <div className="grow"><h2 style={{ margin: 0 }}>{name}</h2><p className="muted">{user.phone} · {t(`role.${user.role}`)}</p></div>
+        {!editing && (
+          <button type="button" className="btn ghost" onClick={() => { setFirst(user.first_name || ""); setLast(user.last_name || ""); setPhone(user.phone || ""); setEditPw(""); setEditing(true); }}>
+            <Icon name="edit" size={16} style={{ verticalAlign: "-3px" }} /> {t("profile.edit")}
+          </button>
+        )}
       </div>
+
+      {editing && (
+        <form className="card form" onSubmit={saveProfile} style={{ marginTop: "1rem" }}>
+          <h2>{t("profile.edit_title")}</h2>
+          <label>
+            {t("first_name")}
+            <input value={first} onChange={(e) => setFirst(e.target.value)} maxLength={20} required />
+          </label>
+          <label>
+            {t("last_name")}
+            <input value={last} onChange={(e) => setLast(e.target.value)} maxLength={20} />
+          </label>
+          <label>
+            {t("phone")}
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998901234567" inputMode="tel" autoComplete="tel" required />
+          </label>
+          {phoneChanged && (
+            <>
+              <p className="muted">{t("profile.phone_warn")}</p>
+              {user.has_password && (
+                <label>
+                  {t("profile.current")}
+                  <PasswordInput label_show={t("pw.show")} label_hide={t("pw.hide")} value={editPw} onChange={(e) => setEditPw(e.target.value)} autoComplete="current-password" required />
+                </label>
+              )}
+            </>
+          )}
+          {pError && <p className="error">{pError}</p>}
+          <div style={{ display: "flex", gap: ".6rem" }}>
+            <button className="btn" disabled={pBusy}>{pBusy ? t("wait") : t("profile.save")}</button>
+            <button type="button" className="btn ghost" onClick={() => { setEditing(false); setPError(""); }}>{t("profile.cancel")}</button>
+          </div>
+        </form>
+      )}
 
       {next && (
         <>
@@ -81,12 +145,12 @@ export default function Profile() {
         {hasPassword && (
           <label>
             {t("profile.current")}
-            <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
+            <PasswordInput label_show={t("pw.show")} label_hide={t("pw.hide")} value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required />
           </label>
         )}
         <label>
           {t("profile.new")}
-          <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} minLength={8} required />
+          <PasswordInput label_show={t("pw.show")} label_hide={t("pw.hide")} value={newPw} onChange={(e) => setNewPw(e.target.value)} minLength={8} autoComplete="new-password" required />
         </label>
 
         {error && <p className="error">{error}</p>}

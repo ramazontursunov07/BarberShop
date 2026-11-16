@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
 import { useI18n } from "../i18n.jsx";
+import { PasswordInput } from "../components/ui.jsx";
 
 export default function Login() {
   const { user, login, register } = useAuth();
@@ -72,8 +73,9 @@ export default function Login() {
 
         <label>
           {t("password")}
-          <input
-            type="password"
+          <PasswordInput
+            label_show={t("pw.show")}
+            label_hide={t("pw.hide")}
             value={form.password}
             onChange={set("password")}
             minLength={isLogin ? 1 : 8}

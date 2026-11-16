@@ -8,6 +8,9 @@ export const profileUz = {
   "profile.pw_change": "Parolni almashtirish",
   "profile.current": "Joriy parol", "profile.new": "Yangi parol (kamida 8 belgi)",
   "profile.save": "Saqlash", "profile.saved": "Parol saqlandi ✓",
+  "pw.show": "Parolni ko'rsatish", "pw.hide": "Parolni yashirish",
+  "profile.edit": "Tahrirlash", "profile.edit_title": "Profilni tahrirlash", "profile.cancel": "Bekor qilish",
+  "profile.phone_warn": "Telefon raqamini o'zgartirsangiz, u qayta tasdiqlanishi kerak (Telegram botda kontaktingizni yuboring). Kirish yangi raqam bilan bo'ladi.",
 };
 export const profileRu = {
   "nav.profile": "Профиль",
@@ -18,6 +21,9 @@ export const profileRu = {
   "profile.pw_change": "Смена пароля",
   "profile.current": "Текущий пароль", "profile.new": "Новый пароль (минимум 8 символов)",
   "profile.save": "Сохранить", "profile.saved": "Пароль сохранён ✓",
+  "pw.show": "Показать пароль", "pw.hide": "Скрыть пароль",
+  "profile.edit": "Изменить", "profile.edit_title": "Редактирование профиля", "profile.cancel": "Отмена",
+  "profile.phone_warn": "После смены номера его нужно подтвердить заново (отправьте контакт в Telegram-боте). Входить нужно будет по новому номеру.",
 };
 export const profileEn = {
   "nav.profile": "Profile",
@@ -28,4 +34,7 @@ export const profileEn = {
   "profile.pw_change": "Change password",
   "profile.current": "Current password", "profile.new": "New password (at least 8 characters)",
   "profile.save": "Save", "profile.saved": "Password saved ✓",
+  "pw.show": "Show password", "pw.hide": "Hide password",
+  "profile.edit": "Edit", "profile.edit_title": "Edit profile", "profile.cancel": "Cancel",
+  "profile.phone_warn": "After changing your number it must be verified again (send your contact in the Telegram bot). You will sign in with the new number.",
 };

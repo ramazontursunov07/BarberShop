@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Icon from "./Icon.jsx";
 
 export const Skeleton = ({ h = 16, w = "100%", className = "" }) => (
@@ -39,3 +39,17 @@ export const Empty = ({ icon = "scissors", children }) => (
 export const Avatar = ({ name = "?", small }) => (
   <div className={`avatar ${small ? "sm" : ""}`}>{(name.trim()[0] || "?").toUpperCase()}</div>
 );
+
+// Parol maydoni: ko'z tugmasi bilan parolni ko'rsatadi/yashiradi
+export function PasswordInput({ label_show = "Show", label_hide = "Hide", ...props }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="pw-wrap">
+      <input {...props} type={shown ? "text" : "password"} />
+      <button type="button" className="pw-toggle" onClick={() => setShown((v) => !v)}
+        aria-label={shown ? label_hide : label_show} title={shown ? label_hide : label_show}>
+        <Icon name={shown ? "eyeoff" : "eye"} size={18} />
+      </button>
+    </div>
+  );
+}

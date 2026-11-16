@@ -49,7 +49,7 @@ export async function speak(text, uiLang, onEnd) {
   stopSpeaking();
   const mine = token;
   try {
-    const blob = await api("/api/ai/speak/", { method: "POST", body: { text, format: "mp3" }, blob: true });
+    const blob = await api("/api/ai/speak/", { method: "POST", body: { text }, blob: true });
     if (mine !== token) return "server"; // kutish paytida to'xtatilgan
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
