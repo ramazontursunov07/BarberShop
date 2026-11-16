@@ -14,6 +14,7 @@ from apps.shops.permissions import IsOwnerRole
 from .llm import conf
 from .review_insights import InsightsError, analyze_shop_reviews
 from .speech import MAX_AUDIO_BYTES, EmptyTranscript, SpeechNotConfigured, transcribe
+from .tts import TTSFailed, TTSNotConfigured, clean_text, synthesize
 from .usage_stats import usage_stats
 
 logger = logging.getLogger(__name__)
@@ -156,6 +157,50 @@ class TranscribeView(APIView):
             logger.error("STT provayderi xatosi: %s", getattr(exc, "message", exc))
             return Response({"detail": "Ovozni matnga aylantirib bo'lmadi"}, status=status.HTTP_502_BAD_GATEWAY)
         return Response({"text": text})
+
+
+class AiSpeakThrottle(UserRateThrottle):
+    scope = "ai_speak"
+    rate = "30/min"
+
+
+class SpeakView(APIView):
+    """AI javobini ovozga aylantiradi: POST {"text": "...", "format": "mp3"|"ogg" (ixtiyoriy)}. Javob — audio fayl.
+
+    503 — TTS sozlanmagan (frontend brauzer ovoziga o'tadi). Bir xil matn 1 soat keshlanadi (pul tejaladi).
+    """
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [AiSpeakThrottle]
+
+    def post(self, request):
+        from django.core.cache import cache
+        from django.http import HttpResponse
+        import hashlib
+
+        text = clean_text(str(request.data.get("text") or ""))
+        if not text:
+            return Response({"detail": "text majburiy"}, status=status.HTTP_400_BAD_REQUEST)
+        fmt = str(request.data.get("format") or "")
+        key = "tts:" + hashlib.sha256(f"{fmt}|{text}".encode()).hexdigest()
+        hit = cache.get(key)
+        if hit is None:
+            try:
+                hit = synthesize(text, fmt)
+            except TTSNotConfigured:
+                return Response({"detail": "Ovozli javob sozlanmagan"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            except TTSFailed as exc:
+                if str(exc) == "limit":
+                    return Response({"detail": "AI limiti tugadi, keyinroq urinib ko'ring"},
+                                    status=status.HTTP_429_TOO_MANY_REQUESTS)
+                logger.error("TTS xatosi: %s", exc)
+                return Response({"detail": "Ovoz yaratib bo'lmadi"}, status=status.HTTP_502_BAD_GATEWAY)
+            if len(hit[0]) <= 600_000:
+                cache.set(key, hit, 3600)
+        audio, mime = hit
+        resp = HttpResponse(audio, content_type=mime)
+        resp["Cache-Control"] = "private, max-age=3600"
+        return resp
 
 
 class IsAdminRole(BasePermission):

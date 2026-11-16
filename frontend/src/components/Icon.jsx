@@ -30,6 +30,9 @@ const P = {
   coffee: "M5 8h12v6a5 5 0 01-5 5H10a5 5 0 01-5-5zM17 10h2a2 2 0 010 4h-2M8 2v3M12 2v3",
   bolt: "M13 2L4 14h7l-1 8 9-12h-7z",
   chat: "M4 5h16v11H9l-5 4z",
+  volume: "M11 5L6 9H3v6h3l5 4zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13",
+  mute: "M11 5L6 9H3v6h3l5 4zM22 9l-6 6M16 9l6 6",
+  stop: "M7 7h10v10H7z",
 };
 
 export default function Icon({ name, size = 20, stroke = 1.9, fill = "none", ...rest }) {

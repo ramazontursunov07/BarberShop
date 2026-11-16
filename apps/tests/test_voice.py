@@ -163,12 +163,16 @@ class BotVoiceHandlerTests(SimpleTestCase):
 
     def message(self, duration=5, file_size=1000):
         answers = []
+        self.voices = []
 
         async def answer(text, **kwargs):
             answers.append(text)
 
+        async def answer_voice(voice, **kwargs):
+            self.voices.append(voice)
+
         msg = SimpleNamespace(
-            from_user=SimpleNamespace(id=42), chat=SimpleNamespace(id=42), answer=answer,
+            from_user=SimpleNamespace(id=42), chat=SimpleNamespace(id=42), answer=answer, answer_voice=answer_voice,
             voice=SimpleNamespace(duration=duration, file_size=file_size),
         )
         return msg, answers
@@ -182,7 +186,7 @@ class BotVoiceHandlerTests(SimpleTestCase):
 
         return SimpleNamespace(download=download, send_chat_action=chat_action)
 
-    def backend(self, transcribe_result="Ertaga soch olish", chat_result="Qaysi usta?"):
+    def backend(self, transcribe_result="Ertaga soch olish", chat_result="Qaysi usta?", speak_result=b"OggS-audio"):
         async def get_token(user_id, **kw):
             return "tok"
 
@@ -194,7 +198,13 @@ class BotVoiceHandlerTests(SimpleTestCase):
         async def chat(token, text, history):
             return chat_result
 
-        return SimpleNamespace(get_token=get_token, transcribe=transcribe_, chat=chat)
+        async def speak(token, text, fmt="ogg"):
+            self.spoken = (text, fmt)
+            if isinstance(speak_result, Exception):
+                raise speak_result
+            return speak_result
+
+        return SimpleNamespace(get_token=get_token, transcribe=transcribe_, chat=chat, speak=speak)
 
     def run_handler(self, msg, backend):
         with mock.patch.object(self.main, "backend", backend):
@@ -212,6 +222,20 @@ class BotVoiceHandlerTests(SimpleTestCase):
         self.assertEqual(answers, ["🎤 Eshitdim: «Ertaga soch olish»", "Qaysi usta?"])
         history = list(self.main.histories[42])
         self.assertEqual(history[0], {"role": "user", "content": "Ertaga soch olish"})
+
+    def test_voice_gets_voice_reply(self):
+        msg, answers = self.message()
+        self.run_handler(msg, self.backend())
+        self.assertEqual(self.spoken, ("Qaysi usta?", "ogg"))
+        self.assertEqual(len(self.voices), 1)
+        self.assertEqual(self.voices[0].filename, "javob.ogg")
+
+    def test_voice_reply_failure_keeps_text_answer(self):
+        for error in (ApiError(503, "x"), ApiError(502, "x"), httpx.ConnectError("x")):
+            msg, answers = self.message()
+            self.run_handler(msg, self.backend(speak_result=error))
+            self.assertEqual(answers, ["🎤 Eshitdim: «Ertaga soch olish»", "Qaysi usta?"])
+            self.assertEqual(self.voices, [])
 
     def test_unintelligible_voice_gets_friendly_reply(self):
         msg, answers = self.message()

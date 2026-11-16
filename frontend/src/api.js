@@ -59,7 +59,7 @@ function refreshAccess() {
   return refreshing;
 }
 
-export async function api(path, { method = "GET", body, query, auth = true, retry = true } = {}) {
+export async function api(path, { method = "GET", body, query, auth = true, retry = true, blob = false } = {}) {
   let url = path;
   if (query) {
     const params = new URLSearchParams(
@@ -78,12 +78,14 @@ export async function api(path, { method = "GET", body, query, auth = true, retr
 
   if (res.status === 401 && auth && tokens.access) {
     if (retry && (await refreshAccess())) {
-      return api(path, { method, body, query, auth, retry: false });
+      return api(path, { method, body, query, auth, retry: false, blob });
     }
     tokens.clear();
     window.dispatchEvent(new Event("auth:logout"));
-    return api(path, { method, body, query, auth: false, retry: false });
+    return api(path, { method, body, query, auth: false, retry: false, blob });
   }
+
+  if (blob && res.ok) return res.blob(); // audio va boshqa ikkilik javoblar
 
   const data = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) throw new ApiError(errorMessage(data), res.status, data);

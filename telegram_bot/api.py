@@ -68,6 +68,17 @@ class BackendClient:
             raise ApiError(resp.status_code, _detail(resp))
         return resp.json()["text"]
 
+    async def speak(self, token: str, text: str, fmt: str = "ogg") -> bytes:
+        """AI javobini ovozga aylantiradi (Telegram ovozli xabari uchun ogg/opus)."""
+        resp = await self._http.post(
+            "/api/ai/speak/",
+            json={"text": text, "format": fmt},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        if resp.status_code != 200:
+            raise ApiError(resp.status_code, _detail(resp))
+        return resp.content
+
     async def face_shape(self, token: str, photo: bytes) -> dict:
         resp = await self._http.post(
             "/api/insights/hairstyle/",

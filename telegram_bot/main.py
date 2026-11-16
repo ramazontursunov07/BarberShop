@@ -12,7 +12,7 @@ import httpx
 from aiogram import Bot, Dispatcher, F
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandStart
-from aiogram.types import (CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto,
+from aiogram.types import (BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto,
                            KeyboardButton, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove)
 
 from .api import ApiError, BackendClient, NotLinked
@@ -116,7 +116,7 @@ async def get_token_or_prompt(message: Message) -> str | None:
     return None
 
 
-async def chat_round(message: Message, bot: Bot, user_id: int, token: str, text: str) -> None:
+async def chat_round(message: Message, bot: Bot, user_id: int, token: str, text: str) -> str | None:
     """Matnni AI agentga yuboradi va javobni qaytaradi (matnli va ovozli xabar uchun umumiy)."""
     await bot.send_chat_action(message.chat.id, "typing")
     try:
@@ -129,16 +129,30 @@ async def chat_round(message: Message, bot: Bot, user_id: int, token: str, text:
         else:
             logger.error("chat: backend xatosi %s", exc)
             await message.answer("AI yordamchi vaqtincha ishlamayapti, keyinroq urinib ko'ring.")
-        return
+        return None
     except httpx.HTTPError:
         logger.exception("chat: backendga ulanib bo'lmadi")
         await message.answer("Xizmat vaqtincha ishlamayapti, keyinroq urinib ko'ring.")
-        return
+        return None
 
     history = histories[user_id]
     history.append({"role": "user", "content": text})
     history.append({"role": "assistant", "content": reply})
     await message.answer(reply)  # oddiy matn: LLM belgilari Telegram formatini buzmasin
+    return reply
+
+
+async def send_voice_reply(message: Message, bot: Bot, token: str, reply: str) -> None:
+    """Ovozli xabarga ovozli javob. Sozlanmagan yoki xato bo'lsa jim o'tadi: matnli javob allaqachon yuborilgan."""
+    try:
+        await bot.send_chat_action(message.chat.id, "record_voice")
+        audio = await backend.speak(token, reply, "ogg")
+        await message.answer_voice(BufferedInputFile(audio, filename="javob.ogg"))
+    except ApiError as exc:
+        if exc.status != 503:  # 503 = ovozli javob o'chirilgan, bu xato emas
+            logger.warning("voice: ovozli javob yaratilmadi %s", exc)
+    except (httpx.HTTPError, TelegramAPIError):
+        logger.warning("voice: ovozli javobni yuborib bo'lmadi", exc_info=True)
 
 
 @dp.message(F.voice)
@@ -183,7 +197,9 @@ async def on_voice(message: Message, bot: Bot) -> None:
 
         # Tanilgan matnni ko'rsatamiz: noto'g'ri tanilsa, mijoz darhol sezadi va to'g'rilaydi
         await message.answer(f"🎤 Eshitdim: «{text}»")
-        await chat_round(message, bot, user_id, token, text)
+        reply = await chat_round(message, bot, user_id, token, text)
+        if reply:
+            await send_voice_reply(message, bot, token, reply)  # ovozga ovoz bilan javob
 
 
 def format_hairstyles(data: dict) -> str:

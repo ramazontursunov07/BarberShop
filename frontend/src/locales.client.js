@@ -1,5 +1,7 @@
 // Yangi mijoz interfeysi tarjimalari (locales.js ga qo'shiladi).
 export const clientUz = {
+  "ai.listen": "Tinglash", "ai.voice_on": "Ovozli javob yoqilgan", "ai.voice_off": "Ovozli javobni yoqish", "ai.no_voice": "Qurilmada ovozli o'qish topilmadi", "ai.tap_to_play": "Ovozni boshlash uchun 🔊 tugmasini bosing",
+  "own.tab_queue": "Navbat", "q.free": "Bo'sh", "q.any_master": "istalgan usta",
   "mg.temp_pw": "Usta uchun vaqtinchalik parol (faqat hozir ko'rsatiladi). Uni ustaga bering, u profilida almashtira oladi.",
   "mg.team": "Jamoa (ustalar)", "mg.team_hint": "Mavjud akkaunt egasini usta qilish uchun platforma administratoriga murojaat qiling.", "mg.upcoming": "Kelgusi bronlar: {n}", "mg.deactivate_confirm": "Ustaning {n} ta kelgusi broni bor. Baribir o'chirilsinmi? (Mavjud bronlar bekor bo'lmaydi, yangi bron olinmaydi)",
   "mg.shop_info": "Sartaroshxona ma'lumotlari", "mg.shop_name": "Nomi", "mg.shop_desc": "Tavsif", "mg.shop_phone": "Telefon",
@@ -28,6 +30,8 @@ export const clientUz = {
 };
 
 export const clientRu = {
+  "ai.listen": "Прослушать", "ai.voice_on": "Голосовой ответ включён", "ai.voice_off": "Включить голосовой ответ", "ai.no_voice": "На устройстве нет голоса для озвучки", "ai.tap_to_play": "Нажмите 🔊, чтобы воспроизвести",
+  "own.tab_queue": "Очередь", "q.free": "Свободен", "q.any_master": "любой мастер",
   "mg.temp_pw": "Временный пароль для мастера (показывается только сейчас). Передайте его мастеру, он сможет сменить его в профиле.",
   "mg.team": "Команда (мастера)", "mg.team_hint": "Чтобы сделать мастером уже зарегистрированного человека, обратитесь к администратору платформы.", "mg.upcoming": "Предстоящих записей: {n}", "mg.deactivate_confirm": "У мастера {n} предстоящих записей. Всё равно отключить? (Существующие записи не отменяются, новые приниматься не будут)",
   "mg.shop_info": "Данные барбершопа", "mg.shop_name": "Название", "mg.shop_desc": "Описание", "mg.shop_phone": "Телефон",
@@ -56,6 +60,8 @@ export const clientRu = {
 };
 
 export const clientEn = {
+  "ai.listen": "Listen", "ai.voice_on": "Voice replies on", "ai.voice_off": "Turn on voice replies", "ai.no_voice": "No text-to-speech voice found on this device", "ai.tap_to_play": "Tap 🔊 to play the audio",
+  "own.tab_queue": "Queue", "q.free": "Free", "q.any_master": "any barber",
   "mg.temp_pw": "Temporary password for the barber (shown only now). Give it to them; they can change it in their profile.",
   "mg.team": "Team (barbers)", "mg.team_hint": "To make an already registered person a barber, contact the platform administrator.", "mg.upcoming": "Upcoming bookings: {n}", "mg.deactivate_confirm": "This barber has {n} upcoming bookings. Deactivate anyway? (Existing bookings stay, no new ones are accepted)",
   "mg.shop_info": "Barbershop details", "mg.shop_name": "Name", "mg.shop_desc": "Description", "mg.shop_phone": "Phone",
