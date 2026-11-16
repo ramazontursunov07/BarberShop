@@ -1,39 +1,45 @@
-name: tests
-on: [push, pull_request]
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
 jobs:
   test:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env: {POSTGRES_USER: barber, POSTGRES_PASSWORD: barber, POSTGRES_DB: barber}
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U barber" --health-interval 5s --health-retries 10
+    # CI'da haqiqiy kalitlar kerak emas: hamma tekshiruv LLM'siz ishlaydi
     env:
-      SECRET_KEY: ci-secret
-      DEBUG: "True"
-      DATABASE_URL: postgres://barber:barber@localhost:5432/barber
+      SECRET_KEY: ci-only-not-a-real-secret
+      DEBUG: "False"
+      LLM_API_KEY: ci-dummy-key
+      LLM_BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai/
+      LLM_MODEL: ci-dummy-model
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: {python-version: "3.13", cache: pip}
-      - run: pip install -r requirements.txt
-      - run: python manage.py check
-      - run: python manage.py makemigrations --check --dry-run
-      - run: python manage.py test
+      - uses: actions/checkout@v6
 
-  frontend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-python@v6
         with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - run: npm run build
+          python-version: "3.13"
+          cache: pip
+
+      - name: Kutubxonalarni o'rnatish
+        run: pip install -r requirements.txt
+
+      - name: Django sozlamalarini tekshirish
+        run: python manage.py check
+
+      - name: Migratsiyalar modellarga mos ekanini tekshirish
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Testlar
+        run: python manage.py test
+
+      - name: Baholash to'plami to'g'riligi (LLM chaqirilmaydi)
+        run: python manage.py eval_agent --validate
+
+      - name: Agent grafi yig'ilishini tekshirish (LLM chaqirilmaydi)
+        run: python manage.py show_graph
+
+      - name: Telegram bot kodida sintaksis xatosi yo'qligini tekshirish
+        run: python -m compileall -q telegram_bot
