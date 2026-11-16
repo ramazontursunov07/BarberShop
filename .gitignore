@@ -8,3 +8,4 @@ media/
 staticfiles/
 chroma_db/
 eval_reports
+.env.example
