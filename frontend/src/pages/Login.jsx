@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
 import { useI18n } from "../i18n.jsx";
 import { PasswordInput } from "../components/ui.jsx";
@@ -83,6 +83,8 @@ export default function Login() {
             required
           />
         </label>
+
+        {isLogin && <Link className="link" to="/forgot-password" style={{ alignSelf: "flex-end" }}>{t("fp.link")}</Link>}
 
         {error && <p className="error">{error}</p>}
 

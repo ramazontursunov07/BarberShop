@@ -3,6 +3,7 @@ import { useAuth } from "./auth.jsx";
 import { useI18n } from "./i18n.jsx";
 import Layout from "./components/Layout.jsx";
 import Login from "./pages/Login.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
 import Shops from "./pages/Shops.jsx";
 import ShopPage from "./pages/ShopPage.jsx";
 import Assistant from "./pages/Assistant.jsx";
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/" element={<Shops />} />
         <Route path="/shop/:id" element={<ShopPage />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/assistant" element={<Assistant />} />
         <Route path="/hairstyle" element={<Hairstyle />} />
         <Route path="/profile" element={<Protected><Profile /></Protected>} />

@@ -6,11 +6,11 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
-    def create_user(self, phone, password=None, **extra_fields):
-        if not phone:
-            raise ValueError("Telefon raqam kiritish majburiy")
+    def create_user(self, phone, password=None, **extra_fields):   #user yaratadi.
+        if not phone: #telefon raqam kiritildimi tekshiradi.
+            raise ValueError("Telefon raqam kiritish majburiy")   #xabar
 
-        user = self.model(phone=phone, **extra_fields)
+        user = self.model(phone=phone, **extra_fields)  #user obyektini yaratadi,lekin bazaga yozmaydi.
         user.set_password(password)
         user.save(using=self._db)
         return user

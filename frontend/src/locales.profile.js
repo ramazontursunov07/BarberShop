@@ -11,6 +11,14 @@ export const profileUz = {
   "pw.show": "Parolni ko'rsatish", "pw.hide": "Parolni yashirish",
   "profile.edit": "Tahrirlash", "profile.edit_title": "Profilni tahrirlash", "profile.cancel": "Bekor qilish",
   "profile.phone_warn": "Telefon raqamini o'zgartirsangiz, u qayta tasdiqlanishi kerak (Telegram botda kontaktingizni yuboring). Kirish yangi raqam bilan bo'ladi.",
+  "fp.link": "Parolni unutdingizmi?", "fp.title": "Parolni tiklash",
+  "fp.p1": "✓ Kod Telegram botingizga yuboriladi", "fp.p2": "✓ Kod 10 daqiqa amal qiladi",
+  "fp.step1": "Telefon raqamingizni kiriting. Raqam Telegram botga ulangan bo'lsa, tasdiqlash kodi shu yerga keladi.",
+  "fp.step2": "Telegram botga kelgan 6 xonali kodni va yangi parolni kiriting. Agar kod kelmasa, raqamingiz botga ulanmagan bo'lishi mumkin: botga /start yozib kontaktingizni yuboring.",
+  "fp.send": "Kod yuborish", "fp.code": "Tasdiqlash kodi", "fp.save": "Parolni saqlash",
+  "fp.resend": "Kodni qayta yuborish", "fp.change_phone": "Raqamni o'zgartirish", "fp.back": "← Kirishga qaytish",
+  "fp.bad_code": "Kod noto'g'ri yoki muddati tugagan.", "fp.too_many": "Juda ko'p urinish. Birozdan keyin qayta urinib ko'ring.",
+  "fp.done": "Parol yangilandi. Yangi parol bilan kiring ✓",
 };
 export const profileRu = {
   "nav.profile": "Профиль",
@@ -24,6 +32,14 @@ export const profileRu = {
   "pw.show": "Показать пароль", "pw.hide": "Скрыть пароль",
   "profile.edit": "Изменить", "profile.edit_title": "Редактирование профиля", "profile.cancel": "Отмена",
   "profile.phone_warn": "После смены номера его нужно подтвердить заново (отправьте контакт в Telegram-боте). Входить нужно будет по новому номеру.",
+  "fp.link": "Забыли пароль?", "fp.title": "Восстановление пароля",
+  "fp.p1": "✓ Код придёт в ваш Telegram-бот", "fp.p2": "✓ Код действует 10 минут",
+  "fp.step1": "Введите номер телефона. Если он привязан к Telegram-боту, код подтверждения придёт туда.",
+  "fp.step2": "Введите 6-значный код из Telegram и новый пароль. Если код не пришёл, возможно, номер не привязан: напишите боту /start и отправьте контакт.",
+  "fp.send": "Отправить код", "fp.code": "Код подтверждения", "fp.save": "Сохранить пароль",
+  "fp.resend": "Отправить код ещё раз", "fp.change_phone": "Изменить номер", "fp.back": "← Назад ко входу",
+  "fp.bad_code": "Неверный код или срок его действия истёк.", "fp.too_many": "Слишком много попыток. Попробуйте позже.",
+  "fp.done": "Пароль обновлён. Войдите с новым паролем ✓",
 };
 export const profileEn = {
   "nav.profile": "Profile",
@@ -37,4 +53,12 @@ export const profileEn = {
   "pw.show": "Show password", "pw.hide": "Hide password",
   "profile.edit": "Edit", "profile.edit_title": "Edit profile", "profile.cancel": "Cancel",
   "profile.phone_warn": "After changing your number it must be verified again (send your contact in the Telegram bot). You will sign in with the new number.",
+  "fp.link": "Forgot password?", "fp.title": "Reset password",
+  "fp.p1": "✓ The code is sent to your Telegram bot", "fp.p2": "✓ The code is valid for 10 minutes",
+  "fp.step1": "Enter your phone number. If it is linked to the Telegram bot, the verification code will be sent there.",
+  "fp.step2": "Enter the 6-digit code from Telegram and a new password. If no code arrived, your number may not be linked: message the bot /start and share your contact.",
+  "fp.send": "Send code", "fp.code": "Verification code", "fp.save": "Save password",
+  "fp.resend": "Resend code", "fp.change_phone": "Change number", "fp.back": "← Back to log in",
+  "fp.bad_code": "Wrong or expired code.", "fp.too_many": "Too many attempts. Try again later.",
+  "fp.done": "Password updated. Log in with the new password ✓",
 };

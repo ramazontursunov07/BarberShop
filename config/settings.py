@@ -187,8 +187,12 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    # Production'da so'rov Caddy orqali keladi: mijozning haqiqiy IP'sini X-Forwarded-For'dan olamiz.
+    # Aks holda throttle hamma foydalanuvchini bitta (Caddy) IP deb sanab, butun saytga umumiy cheklov qo'yadi.
+    "NUM_PROXIES": int(os.getenv("NUM_PROXIES", "0" if DEBUG else "1")),
     "DEFAULT_THROTTLE_RATES": {
         "ai_chat": "20/min",
+        "pw_reset": os.getenv("THROTTLE_PW_RESET", "1000/hour" if "test" in sys.argv else "10/hour"),  # parol tiklash: kod yuborish va tasdiqlash (IP bo'yicha)
         "auth": os.getenv("THROTTLE_AUTH", "1000/min" if "test" in sys.argv else "10/min"),  # login/ro'yxatdan o'tish: brute-force'dan himoya (IP bo'yicha)
     },
 }
